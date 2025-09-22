@@ -18,8 +18,7 @@ interface ManualInputPanelProps {
 type ActiveTab = 'nodes' | 'links' | 'groups';
 
 const commonWireSizes = [
-  '14 AWG', '12 AWG', '10 AWG', '8 AWG', '6 AWG', '4 AWG', '2 AWG', '1/0 AWG', '2/0 AWG', '3/0 AWG', '4/0 AWG',
-  '250 MCM', '350 MCM', '500 MCM', '750 MCM', '1000 MCM'
+  '1.5 sq. mm.', '2.5 sq. mm.', '4 sq. mm.', '6 sq. mm.', '10 sq. mm.', '16 sq. mm.', '25 sq. mm.', '35 sq. mm.', '50 sq. mm.', '70 sq. mm.', '95 sq. mm.', '120 sq. mm.', '150 sq. mm.', '185 sq. mm.', '240 sq. mm.', '300 sq. mm.'
 ];
 
 const ManualInputPanel: React.FC<ManualInputPanelProps> = ({ 
@@ -250,7 +249,7 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
             </div>
              <div>
                 <label htmlFor="link-diameter" className="block text-sm font-medium text-slate-400 mb-1">Wire Diameter</label>
-                <input id="link-diameter" type="text" value={linkDiameter} list="wire-sizes-list" onChange={e => setLinkDiameter(e.target.value)} placeholder="e.g., 4/0 AWG" className="w-full bg-slate-800 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+                <input id="link-diameter" type="text" value={linkDiameter} list="wire-sizes-list" onChange={e => setLinkDiameter(e.target.value)} placeholder="e.g., 50 sq. mm." className="w-full bg-slate-800 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none" />
                 <datalist id="wire-sizes-list">
                     {commonWireSizes.map(size => <option key={size} value={size} />)}
                 </datalist>

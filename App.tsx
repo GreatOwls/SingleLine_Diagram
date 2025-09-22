@@ -16,11 +16,11 @@ const initialData: DiagramData = {
     { id: 'L2', type: NodeType.LOAD, label: 'Load 2', properties: { size: '750kW' } },
   ],
   links: [
-    { source: 'G1', target: 'B1', properties: { diameter: '1000 MCM' } },
-    { source: 'B1', target: 'T1', properties: { diameter: '1000 MCM' } },
-    { source: 'T1', target: 'BusA', properties: { diameter: '500 MCM' } },
-    { source: 'BusA', target: 'L1', properties: { diameter: '2/0 AWG' } },
-    { source: 'BusA', target: 'L2', properties: { diameter: '3/0 AWG' } },
+    { source: 'G1', target: 'B1', properties: { diameter: '500 sq. mm.' } },
+    { source: 'B1', target: 'T1', properties: { diameter: '500 sq. mm.' } },
+    { source: 'T1', target: 'BusA', properties: { diameter: '240 sq. mm.' } },
+    { source: 'BusA', target: 'L1', properties: { diameter: '70 sq. mm.' } },
+    { source: 'BusA', target: 'L2', properties: { diameter: '95 sq. mm.' } },
   ],
   groups: [
     { id: 'group1', label: 'Generation Area', nodeIds: ['G1', 'B1'] },
@@ -32,7 +32,7 @@ const initialData: DiagramData = {
 const App: React.FC = () => {
   const [diagramData, setDiagramData] = useState<DiagramData>(initialData);
   const [pendingLink, setPendingLink] = useState<{ source: string | null; target: string | null }>({ source: null, target: null });
-  const [viewMode, setViewMode] = useState<'free' | 'fixed'>('free');
+  const [viewMode, setViewMode] = useState<'free' | 'fixed'>('fixed');
   const [isPaletteVisible, setIsPaletteVisible] = useState(true);
   
   const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
@@ -99,6 +99,7 @@ const App: React.FC = () => {
     type: NodeType;
     label: string;
     properties?: { size?: string };
+    linkProperties?: { diameter?: string };
   }) => {
     setDiagramData(prev => {
         const sourceNode = prev.nodes.find(n => n.id === sourceNodeId);
@@ -127,6 +128,7 @@ const App: React.FC = () => {
         const newLink: Link = {
             source: sourceNodeId,
             target: newId,
+            properties: newNodeData.linkProperties,
         };
 
         return {
@@ -278,7 +280,7 @@ const App: React.FC = () => {
               </svg>
             </button>
         )}
-        <div className="flex-grow flex flex-col bg-slate-800/50 rounded-lg border border-slate-700 shadow-2xl shadow-slate-950/50">
+        <div className="flex-grow flex flex-col bg-transparent rounded-lg border border-slate-700 shadow-2xl shadow-slate-950/50">
           <div className="flex justify-end items-center p-2 border-b border-slate-700">
             <div className="bg-slate-900/50 p-1 rounded-lg flex items-center text-sm" role="radiogroup" aria-label="View Mode">
               <button 

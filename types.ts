@@ -25,7 +25,7 @@ export interface Link {
   source: string;
   target: string;
   properties?: {
-    diameter?: string; // e.g., "4/0 AWG"
+    diameter?: string; // e.g., "50 sq. mm."
   };
   isBoundary?: boolean; // For styling links that cross group boundaries in focus mode
 }

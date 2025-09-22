@@ -12,6 +12,7 @@ interface DiagramProps {
     type: NodeType;
     label: string;
     properties?: { size?: string };
+    linkProperties?: { diameter?: string };
   }) => void;
 }
 
@@ -23,6 +24,10 @@ const iconSvgs: Record<NodeType, string> = {
     [NodeType.BREAKER]: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"></rect><path d="M5 12H2"></path><path d="M19 12h3"></path></svg>`,
     [NodeType.UNKNOWN]: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
 };
+
+const commonWireSizes = [
+  '1.5 sq. mm.', '2.5 sq. mm.', '4 sq. mm.', '6 sq. mm.', '10 sq. mm.', '16 sq. mm.', '25 sq. mm.', '35 sq. mm.', '50 sq. mm.', '70 sq. mm.', '95 sq. mm.', '120 sq. mm.', '150 sq. mm.', '185 sq. mm.', '240 sq. mm.', '300 sq. mm.'
+];
 
 
 const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNode, onAddNodeAndLink }) => {
@@ -65,7 +70,6 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
     const container = svg.append("g");
     
     // --- Draw Group Boundaries ---
-    const groupColors = d3.scaleOrdinal(d3.schemePastel1);
     const groupLayer = container.insert('g', ':first-child').attr('class', 'group-layer');
 
     // --- Draw Preview Elements ---
@@ -83,9 +87,10 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         .data(links)
         .join('g');
 
-    const link = linkGroup.append('line')
-        .attr('stroke', '#475569') // slate-600
-        .attr('stroke-width', 2)
+    const link = linkGroup.append('path')
+        .attr('fill', 'none')
+        .attr('stroke', '#94a3b8') // slate-400
+        .attr('stroke-width', 2.5)
         .attr('stroke-dasharray', d => d.isBoundary ? '5,5' : 'none');
 
     const linkLabel = linkGroup.append('text')
@@ -98,7 +103,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
 
     // halo for link labels
     linkLabel.clone(true).lower()
-        .attr('stroke', '#1e293b') // slate-800
+        .attr('stroke', '#020617') // slate-950
         .attr('stroke-width', 3)
         .attr('stroke-linejoin', 'round');
 
@@ -112,7 +117,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
     // Node background and border
     node.append('circle')
         .attr('r', iconSize / 2)
-        .attr('fill', d => d.isExternal ? 'transparent' : '#0f172a') // slate-900
+        .attr('fill', d => d.isExternal ? 'transparent' : '#1e293b') // slate-800
         .attr('stroke', d => {
             if (d.isExternal) return '#475569'; // slate-600
             return (d.id === pendingLink.source || d.id === pendingLink.target) 
@@ -149,7 +154,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
 
     // Label halo for readability
     labels.clone(true).lower()
-        .attr('stroke', '#1e293b') // slate-800
+        .attr('stroke', '#020617') // slate-950
         .attr('stroke-width', 4)
         .attr('stroke-linejoin', 'round');
 
@@ -163,7 +168,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         .style('font-style', 'italic');
     
     propertyLabels.clone(true).lower()
-        .attr('stroke', '#1e293b') // slate-800
+        .attr('stroke', '#020617') // slate-950
         .attr('stroke-width', 3)
         .attr('stroke-linejoin', 'round');
 
@@ -206,9 +211,11 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         d3.select(window).on('mousedown.popover', null);
     }
     
+    // FIX: Changed type from d3.Selection<HTMLDivElement, ...> to d3.Selection<d3.BaseType, ...>
+    // to handle the generic type returned by d3 when appending namespaced 'xhtml:*' elements.
     function renderForm(
         d: d3.SimulationNodeDatum & Node,
-        popoverContent: d3.Selection<HTMLDivElement, unknown, null, undefined>
+        popoverContent: d3.Selection<d3.BaseType, unknown, null, undefined>
     ) {
         popoverContent.html(''); // Clear existing content
 
@@ -276,6 +283,19 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
             .attr('id', 'popover-size').attr('type', 'text').attr('placeholder', 'e.g., 500kW')
             .attr('style', inputStyles);
 
+        // Wire Diameter Input
+        form.append('xhtml:label').attr('for', 'popover-diameter').text('Wire Diameter (optional)').attr('style', labelStyles);
+        const diameterInput = form.append('xhtml:input')
+            .attr('id', 'popover-diameter').attr('type', 'text').attr('placeholder', 'e.g., 50 sq. mm.')
+            .attr('list', 'wire-sizes-list-popover')
+            .attr('style', inputStyles);
+        
+        const datalist = form.append('xhtml:datalist').attr('id', 'wire-sizes-list-popover');
+        datalist.selectAll('option')
+            .data(commonWireSizes)
+            .join('option')
+            .attr('value', d => d);
+
         // Submit Button
         form.append('xhtml:button').attr('type', 'submit').text('Add Component')
             .attr('style', 'width: 100%; background-color: #0ea5e9; color: white; font-weight: 600; padding: 10px; border-radius: 6px; border: none; cursor: pointer; margin-top: 8px; font-size: 14px; transition: background-color 0.2s;')
@@ -289,13 +309,19 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
             const type = (typeSelect.node() as HTMLSelectElement).value as NodeType;
             const label = (labelInput.node() as HTMLInputElement).value;
             const size = (sizeInput.node() as HTMLInputElement).value;
+            const diameter = (diameterInput.node() as HTMLInputElement).value;
 
             if (!label) {
                 (labelInput.node() as HTMLInputElement).style.borderColor = '#f87171'; // red-400
                 return;
             }
 
-            const newNodeData = { type, label, properties: size ? { size } : undefined };
+            const newNodeData = { 
+                type, 
+                label, 
+                properties: size ? { size } : undefined,
+                linkProperties: diameter ? { diameter } : undefined 
+            };
             onAddNodeAndLink(d.id, newNodeData);
             closePopover();
         });
@@ -307,7 +333,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         closePopover();
 
         const popoverWidth = 280;
-        const popoverHeight = 320;
+        const popoverHeight = 380;
 
         const popover = container.append('foreignObject')
             .attr('class', 'node-popover')
@@ -349,51 +375,106 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
 
     // --- Layout and Interactivity ---
     if (viewMode === 'fixed') {
-        const verticalSpacing = 140;
-        const horizontalSpacing = 150;
+        const buildHierarchy = (nodes: Node[], links: Link[]) => {
+            if (nodes.length === 0) return null;
 
-        // --- BFS-based Layout ---
-        const linkTargets = new Set(links.map(l => (l.target as any).id || l.target));
-        const rootNodes = nodes.filter(n => n.type === NodeType.GENERATOR || !linkTargets.has(n.id));
+            // 1. Prepare data structures for traversal
+            const nodeMap = new Map(nodes.map(n => [n.id, { ...n, children: [] }]));
+            const adj = new Map(nodes.map(n => [n.id, [] as string[]]));
+            const targetIds = new Set<string>();
 
-        const levels: (typeof nodes)[] = [];
-        const visited = new Set<string>();
-        let queue = [...rootNodes];
-        queue.forEach(n => visited.add(n.id));
-
-        while (queue.length > 0) {
-            levels.push(queue);
-            const nextQueue: (typeof nodes)[] = [];
-            for (const currentNode of queue) {
-                const children = links
-                    .filter(l => ((l.source as any).id || l.source) === currentNode.id)
-                    .map(l => nodes.find(n => n.id === ((l.target as any).id || l.target)))
-                    .filter((n): n is (d3.SimulationNodeDatum & Node) => !!n && !visited.has(n.id));
-                
-                children.forEach(child => {
-                    if (!visited.has(child.id)) {
-                        visited.add(child.id);
-                        nextQueue.push(child);
-                    }
-                });
-            }
-            queue = nextQueue;
-        }
-
-        const unvisitedNodes = nodes.filter(n => !visited.has(n.id));
-        if (unvisitedNodes.length > 0) {
-            levels.push(unvisitedNodes);
-        }
-
-        const totalHeight = (levels.length - 1) * verticalSpacing;
-        levels.forEach((level, levelIndex) => {
-            const levelWidth = (level.length - 1) * horizontalSpacing;
-            const startX = -levelWidth / 2;
-            level.forEach((n, nodeIndex) => {
-                n.fx = startX + nodeIndex * horizontalSpacing;
-                n.fy = levelIndex * verticalSpacing - totalHeight / 2;
+            links.forEach(link => {
+                const sourceId = (link.source as any).id || (link.source as string);
+                const targetId = (link.target as any).id || (link.target as string);
+                if (adj.has(sourceId)) {
+                    adj.get(sourceId)!.push(targetId);
+                }
+                targetIds.add(targetId);
             });
-        });
+
+            // 2. Find root nodes (nodes that are never a target)
+            const rootNodes: (Node & {children: any[]})[] = [];
+            for (const node of nodes) {
+                if (!targetIds.has(node.id)) {
+                    const rootNode = nodeMap.get(node.id);
+                    if (rootNode) rootNodes.push(rootNode);
+                }
+            }
+            
+            // Fallback for graphs with no clear root (e.g., contains only cycles)
+            if (rootNodes.length === 0 && nodes.length > 0) {
+                const fallbackRoot = nodeMap.get(nodes[0].id);
+                if (fallbackRoot) rootNodes.push(fallbackRoot);
+            }
+
+            // 3. Build a strict tree using BFS to handle cycles and multiple parents gracefully
+            const visited = new Set<string>();
+            const q = [...rootNodes];
+            rootNodes.forEach(r => visited.add(r.id));
+
+            let head = 0;
+            while(head < q.length) {
+                const parent = q[head++];
+                // Ensure children array is clean before populating
+                parent.children = []; 
+
+                const childrenIds = adj.get(parent.id) || [];
+                for (const childId of childrenIds) {
+                    if (!visited.has(childId)) {
+                        visited.add(childId);
+                        const childNode = nodeMap.get(childId);
+                        if(childNode) {
+                            parent.children.push(childNode);
+                            q.push(childNode);
+                        }
+                    }
+                }
+            }
+
+            // 4. If there are multiple disconnected trees, create a virtual root to group them
+            if (rootNodes.length > 1) {
+                return { id: '__DUMMY_ROOT__', type: NodeType.UNKNOWN, label: 'root', children: rootNodes };
+            }
+            
+            return rootNodes[0];
+        };
+
+        const hierarchyData = buildHierarchy(nodes, links);
+
+        if (hierarchyData) {
+            const root = d3.hierarchy(hierarchyData, d => (d as any).children);
+            
+            const verticalSpacing = 160;
+            const horizontalSpacing = 120;
+            const treeLayout = d3.tree().nodeSize([horizontalSpacing, verticalSpacing]);
+            
+            treeLayout(root);
+            
+            const descendants = root.descendants();
+            let minY = Infinity;
+            descendants.forEach(d => {
+                if (d.y < minY) minY = d.y;
+            });
+
+            const xCoords = descendants.map(d => d.x);
+            const minX = d3.min(xCoords) || 0;
+            const maxX = d3.max(xCoords) || 0;
+            const treeWidth = maxX - minX;
+            const xOffset = -(minX + treeWidth / 2);
+
+            descendants.forEach(d => {
+                const originalNode = nodes.find(n => n.id === (d.data as any).id);
+                if (originalNode) {
+                    if ((d.data as any).id === '__DUMMY_ROOT__') {
+                        originalNode.fx = null;
+                        originalNode.fy = null;
+                    } else {
+                        originalNode.fx = d.x + xOffset;
+                        originalNode.fy = d.y - minY;
+                    }
+                }
+            });
+        }
         
         simulation
             .force("link", d3.forceLink(links).id((d: any) => d.id))
@@ -470,7 +551,8 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         if (type && Object.values(NodeType).includes(type)) {
           const currentTransform = d3.zoomTransform(svg.node()!);
           const [mx, my] = d3.pointer(event, svg.node()!);
-          const { x, y } = currentTransform.invert([mx, my]);
+          // FIX: Correctly destructure the array returned by `currentTransform.invert`. It returns [x, y], not {x, y}.
+          const [x, y] = currentTransform.invert([mx, my]);
           onDropNode(type, x, y);
         }
       });
@@ -478,11 +560,23 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
 
     // --- Simulation Ticker ---
     simulation.on('tick', () => {
-        link
-            .attr('x1', d => (d.source as any).x)
-            .attr('y1', d => (d.source as any).y)
-            .attr('x2', d => (d.target as any).x)
-            .attr('y2', d => (d.target as any).y);
+        link.attr('d', d => {
+            const source = d.source as any;
+            const target = d.target as any;
+
+            if (source.x == null || source.y == null || target.x == null || target.y == null) {
+                return null;
+            }
+
+            if (viewMode === 'fixed') {
+                // Classic org chart elbow path
+                const midY = (source.y + target.y) / 2;
+                return `M ${source.x},${source.y} V ${midY} H ${target.x} V ${target.y}`;
+            } else {
+                // 'free' view, a simple straight line
+                return `M ${source.x},${source.y} L ${target.x},${target.y}`;
+            }
+        });
         
         linkLabel
             .attr('x', d => ((d.source as any).x + (d.target as any).x) / 2)
@@ -491,36 +585,53 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         node.attr('transform', d => `translate(${d.x}, ${d.y})`);
 
         // --- Update Group Boundaries ---
-        const groupPathData: { [key: string]: [number, number][] } = {};
-        const groupPadding = iconSize * 0.9;
+        const groupPathData: { [key: string]: string } = {};
+        const groupPadding = iconSize * 1.5;
+        const cornerRadius = 30;
 
         (data.groups || []).forEach(group => {
-            const groupNodes = group.nodeIds.map(nodeId => nodes.find(n => n.id === nodeId && !n.isExternal)).filter((n): n is d3.SimulationNodeDatum & Node => !!n && n.x !== undefined && n.y !== undefined);
-            if (groupNodes.length === 0) return;
-            
-            const points: [number, number][] = groupNodes.flatMap(n => [
-                [n.x! - groupPadding, n.y! - groupPadding], [n.x! - groupPadding, n.y! + groupPadding],
-                [n.x! + groupPadding, n.y! - groupPadding], [n.x! + groupPadding, n.y! + groupPadding]
-            ]);
+            const groupNodes = group.nodeIds
+                .map(nodeId => nodes.find(n => n.id === nodeId && !n.isExternal))
+                .filter((n): n is d3.SimulationNodeDatum & Node => !!n && n.x !== undefined && n.y !== undefined);
 
-            const hull = d3.polygonHull(points);
-            if (hull) {
-                groupPathData[group.id] = hull;
-            }
+            if (groupNodes.length === 0) return;
+
+            const xCoords = groupNodes.map(n => n.x!);
+            const yCoords = groupNodes.map(n => n.y!);
+
+            const minX = d3.min(xCoords)! - groupPadding;
+            const maxX = d3.max(xCoords)! + groupPadding;
+            const minY = d3.min(yCoords)! - groupPadding - 20; // Extra v-padding for label
+            const maxY = d3.max(yCoords)! + groupPadding;
+            
+            const width = maxX - minX;
+            const height = maxY - minY;
+
+            const pathString = `
+              M${minX + cornerRadius},${minY}
+              h${width - 2 * cornerRadius}
+              a${cornerRadius},${cornerRadius} 0 0 1 ${cornerRadius},${cornerRadius}
+              v${height - 2 * cornerRadius}
+              a${cornerRadius},${cornerRadius} 0 0 1 -${cornerRadius},${cornerRadius}
+              h-${width - 2 * cornerRadius}
+              a${cornerRadius},${cornerRadius} 0 0 1 -${cornerRadius},-${cornerRadius}
+              v-${height - 2 * cornerRadius}
+              a${cornerRadius},${cornerRadius} 0 0 1 ${cornerRadius},-${cornerRadius}
+              z
+            `;
+            groupPathData[group.id] = pathString.trim();
         });
+
 
         groupLayer.selectAll<SVGPathElement, DiagramData['groups'][number]>('path')
             .data(data.groups || [], d => d.id)
             .join('path')
-            .attr('d', d => {
-                const path = groupPathData[d.id];
-                return path ? `M${path.join('L')}Z` : '';
-            })
-            .attr('fill', d => groupColors(d.id))
-            .attr('stroke', d => groupColors(d.id))
+            .attr('d', d => groupPathData[d.id] || '')
+            .attr('fill', '#334155')
+            .attr('stroke', '#334155')
             .attr('stroke-width', 20)
             .attr('stroke-linejoin', 'round')
-            .style('opacity', 0.15)
+            .style('opacity', 0.25)
             .style('pointer-events', 'none');
         
         // Update group labels
@@ -531,16 +642,23 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
             .attr('text-anchor', 'middle')
             .attr('font-weight', 'bold')
             .attr('fill', '#e2e8f0') // slate-200
-            .style('font-size', '14px')
+            .style('font-size', '16px')
+            .style('letter-spacing', '0.05em')
             .attr('x', d => {
-                const path = groupPathData[d.id];
-                return path ? d3.polygonCentroid(path)[0] : -9999;
+                const groupNodes = d.nodeIds
+                    .map(id => nodes.find(n => n.id === id))
+                    .filter((n): n is Node => !!n && n.x !== undefined);
+                if (groupNodes.length === 0) return -9999;
+                const xCoords = groupNodes.map(n => n.x!);
+                return d3.mean(xCoords);
             })
             .attr('y', d => {
-                const path = groupPathData[d.id];
-                if (!path) return -9999;
-                const [minY] = d3.extent(path, p => p[1]) || [0];
-                return minY - 20; // Position above the hull
+                 const groupNodes = d.nodeIds
+                    .map(id => nodes.find(n => n.id === id))
+                    .filter((n): n is Node => !!n && n.y !== undefined);
+                if (groupNodes.length === 0) return -9999;
+                const yCoords = groupNodes.map(n => n.y!);
+                return (d3.min(yCoords) || 0) - groupPadding;
             });
 
 
