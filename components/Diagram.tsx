@@ -8,6 +8,11 @@ interface DiagramProps {
   pendingLink: { source: string | null; target: string | null };
   viewMode: 'free' | 'fixed';
   onDropNode: (type: NodeType, x: number, y: number) => void;
+  onAddNodeAndLink: (sourceNodeId: string, newNodeData: {
+    type: NodeType;
+    label: string;
+    properties?: { size?: string };
+  }) => void;
 }
 
 const iconSvgs: Record<NodeType, string> = {
@@ -20,7 +25,7 @@ const iconSvgs: Record<NodeType, string> = {
 };
 
 
-const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNode }) => {
+const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNode, onAddNodeAndLink }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
@@ -195,10 +200,151 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         tooltip.transition().duration(500).style('opacity', 0);
     });
 
+    // --- Node Click Popover ---
+    function closePopover() {
+        container.selectAll('.node-popover').remove();
+        d3.select(window).on('mousedown.popover', null);
+    }
+    
+    function renderForm(
+        d: d3.SimulationNodeDatum & Node,
+        popoverContent: d3.Selection<HTMLDivElement, unknown, null, undefined>
+    ) {
+        popoverContent.html(''); // Clear existing content
+
+        const header = popoverContent.append('xhtml:div')
+            .style('display', 'flex').style('justify-content', 'space-between')
+            .style('align-items', 'center').style('margin-bottom', '12px');
+        
+        header.append('xhtml:span').style('font-weight', '600').text('Add & Connect Component');
+
+        header.append('xhtml:button').html('&times;')
+            .style('background', 'none').style('border', 'none').style('color', '#94a3b8')
+            .style('font-size', '20px').style('cursor', 'pointer').style('line-height', '1')
+            .on('click', (event) => { event.stopPropagation(); closePopover(); });
+
+        const form = popoverContent.append('xhtml:form')
+            .style('display', 'flex').style('flex-direction', 'column')
+            .style('gap', '10px').style('flex-grow', '1');
+
+        const componentTypes = [NodeType.TRANSFORMER, NodeType.BUS, NodeType.LOAD, NodeType.BREAKER];
+        const inputStyles = 'width: 100%; box-sizing: border-box; background-color: #334155; border: 1px solid #475569; border-radius: 6px; padding: 8px; color: #cbd5e1; font-size: 14px;';
+        const labelStyles = 'font-size: 13px; color: #94a3b8; margin-bottom: -4px;';
+
+        // Type Selector
+        form.append('xhtml:label').attr('for', 'popover-type').text('Component Type').attr('style', labelStyles);
+        const typeSelect = form.append('xhtml:select')
+            .attr('id', 'popover-type').attr('style', inputStyles);
+        
+        typeSelect.selectAll('option')
+            .data(componentTypes)
+            .join('option')
+            .attr('value', d => d)
+            .text(d => d.charAt(0) + d.slice(1).toLowerCase());
+        
+        // Label Input
+        form.append('xhtml:label').attr('for', 'popover-label').text('Label').attr('style', labelStyles);
+        const labelInput = form.append('xhtml:input')
+            .attr('id', 'popover-label').attr('type', 'text')
+            .attr('style', inputStyles);
+            
+        const generateDefaultLabel = (type: NodeType) => {
+            let count = 1;
+            let defaultLabel = `${type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()} ${count}`;
+            while(data.nodes.some(n => n.label === defaultLabel)) {
+                count++;
+                defaultLabel = `${type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()} ${count}`;
+            }
+            return defaultLabel;
+        }
+
+        labelInput.attr('value', generateDefaultLabel(componentTypes[0]));
+
+        let userHasTyped = false;
+        labelInput.on('input', () => { userHasTyped = true; });
+        
+        typeSelect.on('change', function() {
+            if (!userHasTyped) {
+                const selectedType = d3.select(this).property('value') as NodeType;
+                labelInput.property('value', generateDefaultLabel(selectedType));
+            }
+        });
+
+        // Size Input
+        form.append('xhtml:label').attr('for', 'popover-size').text('Size (optional)').attr('style', labelStyles);
+        const sizeInput = form.append('xhtml:input')
+            .attr('id', 'popover-size').attr('type', 'text').attr('placeholder', 'e.g., 500kW')
+            .attr('style', inputStyles);
+
+        // Submit Button
+        form.append('xhtml:button').attr('type', 'submit').text('Add Component')
+            .attr('style', 'width: 100%; background-color: #0ea5e9; color: white; font-weight: 600; padding: 10px; border-radius: 6px; border: none; cursor: pointer; margin-top: 8px; font-size: 14px; transition: background-color 0.2s;')
+            .on('mouseover', function() { d3.select(this).style('background-color', '#0284c7'); })
+            .on('mouseout', function() { d3.select(this).style('background-color', '#0ea5e9'); });
+        
+        form.on('submit', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const type = (typeSelect.node() as HTMLSelectElement).value as NodeType;
+            const label = (labelInput.node() as HTMLInputElement).value;
+            const size = (sizeInput.node() as HTMLInputElement).value;
+
+            if (!label) {
+                (labelInput.node() as HTMLInputElement).style.borderColor = '#f87171'; // red-400
+                return;
+            }
+
+            const newNodeData = { type, label, properties: size ? { size } : undefined };
+            onAddNodeAndLink(d.id, newNodeData);
+            closePopover();
+        });
+
+        setTimeout(() => (labelInput.node() as HTMLInputElement)?.select(), 50);
+    }
+
+    function showPopover(event: MouseEvent, d: d3.SimulationNodeDatum & Node) {
+        closePopover();
+
+        const popoverWidth = 280;
+        const popoverHeight = 320;
+
+        const popover = container.append('foreignObject')
+            .attr('class', 'node-popover')
+            .attr('x', d.x! + iconSize / 2 + 10)
+            .attr('y', d.y! - popoverHeight / 2)
+            .attr('width', popoverWidth)
+            .attr('height', popoverHeight);
+
+        popover.on('mousedown', (event) => event.stopPropagation());
+        popover.on('wheel', (event) => event.stopPropagation());
+
+        const popoverBody = popover.append('xhtml:body')
+            .style('margin', '0').style('padding', '0')
+            .style('background', 'transparent').style('height', '100%');
+
+        const popoverContent = popoverBody.append('xhtml:div')
+            .style('background-color', '#1e293b').style('border', '1px solid #334155')
+            .style('border-radius', '8px').style('color', '#cbd5e1')
+            .style('font-family', 'sans-serif').style('font-size', '14px')
+            .style('padding', '16px').style('height', '100%')
+            .style('box-sizing', 'border-box').style('display', 'flex')
+            .style('flex-direction', 'column');
+
+        renderForm(d, popoverContent);
+
+        d3.select(window).on('mousedown.popover', (e: MouseEvent) => {
+            if (!popover.node()?.contains(e.target as globalThis.Node)) {
+                closePopover();
+            }
+        });
+    }
+
     // --- Click handler for nodes ---
     node.filter(d => !d.isExternal).on('click', (event, d) => {
-        if (event.defaultPrevented) return;
-        // Previously opened a modal, now does nothing by default.
+        if (event.defaultPrevented) return; // ignore during drag
+        event.stopPropagation();
+        showPopover(event, d);
     });
 
     // --- Layout and Interactivity ---
@@ -305,6 +451,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         .scaleExtent([0.1, 4])
         .on('zoom', (event) => {
             container.attr('transform', event.transform);
+            closePopover();
         });
 
     svg.call(zoom)
@@ -417,7 +564,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         }
     });
 
-  }, [data, pendingLink, viewMode, onDropNode]);
+  }, [data, pendingLink, viewMode, onDropNode, onAddNodeAndLink]);
 
   return (
     <svg ref={svgRef} width="100%" height="100%" className="overflow-hidden"></svg>

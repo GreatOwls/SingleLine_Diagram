@@ -33,7 +33,11 @@ const PaletteItem: React.FC<PaletteItemProps> = ({ type, label }) => {
     );
 };
 
-const ComponentPalette: React.FC = () => {
+interface ComponentPaletteProps {
+    onHide: () => void;
+}
+
+const ComponentPalette: React.FC<ComponentPaletteProps> = ({ onHide }) => {
   const componentTypes = [
     { type: NodeType.GENERATOR, label: 'Generator' },
     { type: NodeType.TRANSFORMER, label: 'Transformer' },
@@ -43,8 +47,19 @@ const ComponentPalette: React.FC = () => {
   ];
 
   return (
-    <div className="bg-slate-800/50 rounded-lg border border-slate-700 p-3 shadow-lg">
-      <h3 className="text-sm font-semibold text-slate-300 mb-4 text-center">Component Palette</h3>
+    <div className="bg-slate-800/50 rounded-lg border border-slate-700 p-3 shadow-lg flex-shrink-0 w-48">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-slate-300">Palette</h3>
+        <button 
+            onClick={onHide}
+            className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-700 transition-colors"
+            aria-label="Hide Component Palette"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         {componentTypes.map(({ type, label }) => (
           <PaletteItem key={type} type={type} label={label} />

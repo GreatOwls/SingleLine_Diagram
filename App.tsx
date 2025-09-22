@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const [diagramData, setDiagramData] = useState<DiagramData>(initialData);
   const [pendingLink, setPendingLink] = useState<{ source: string | null; target: string | null }>({ source: null, target: null });
   const [viewMode, setViewMode] = useState<'free' | 'fixed'>('free');
+  const [isPaletteVisible, setIsPaletteVisible] = useState(true);
   
   const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
 
@@ -91,6 +92,48 @@ const App: React.FC = () => {
         ...prev,
         nodes: [...prev.nodes, newNode],
       };
+    });
+  }, []);
+  
+  const handleAddNodeAndLink = useCallback((sourceNodeId: string, newNodeData: {
+    type: NodeType;
+    label: string;
+    properties?: { size?: string };
+  }) => {
+    setDiagramData(prev => {
+        const sourceNode = prev.nodes.find(n => n.id === sourceNodeId);
+
+        // 1. Create the new node ID
+        let count = 1;
+        let newId = `${newNodeData.type.charAt(0)}${count}`;
+        while (prev.nodes.some(n => n.id === newId)) {
+            count++;
+            newId = `${newNodeData.type.charAt(0)}${count}`;
+        }
+        
+        const newNodeX = sourceNode?.x ? sourceNode.x + 150 : 0;
+        const newNodeY = sourceNode?.y ? sourceNode.y : 0;
+
+        const newNode: Node = {
+            id: newId,
+            label: newNodeData.label,
+            type: newNodeData.type,
+            properties: newNodeData.properties,
+            x: newNodeX,
+            y: newNodeY,
+        };
+
+        // 2. Create the new link
+        const newLink: Link = {
+            source: sourceNodeId,
+            target: newId,
+        };
+
+        return {
+            ...prev,
+            nodes: [...prev.nodes, newNode],
+            links: [...prev.links, newLink],
+        };
     });
   }, []);
 
@@ -220,8 +263,21 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-900 text-white font-sans flex flex-col">
       <Header onSave={handleSaveDiagram} onLoad={handleLoadDiagram} />
-      <main className="flex-grow container mx-auto p-4 md:p-8 flex flex-row gap-8">
-        <ComponentPalette />
+      <main className="flex-grow container mx-auto p-4 md:p-8 flex flex-row gap-8 relative">
+        {isPaletteVisible ? (
+            <ComponentPalette onHide={() => setIsPaletteVisible(false)} />
+          ) : (
+            <button
+              onClick={() => setIsPaletteVisible(true)}
+              className="absolute top-1/2 -translate-y-1/2 left-4 md:left-8 z-10 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white p-2 rounded-full shadow-lg transition-all"
+              aria-label="Show Component Palette"
+              title="Show Component Palette"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+        )}
         <div className="flex-grow flex flex-col bg-slate-800/50 rounded-lg border border-slate-700 shadow-2xl shadow-slate-950/50">
           <div className="flex justify-end items-center p-2 border-b border-slate-700">
             <div className="bg-slate-900/50 p-1 rounded-lg flex items-center text-sm" role="radiogroup" aria-label="View Mode">
@@ -258,7 +314,7 @@ const App: React.FC = () => {
               </div>
             )}
             {displayedData.nodes.length > 0 ? (
-              <Diagram data={displayedData} pendingLink={pendingLink} viewMode={viewMode} onDropNode={handleDropNode} />
+              <Diagram data={displayedData} pendingLink={pendingLink} viewMode={viewMode} onDropNode={handleDropNode} onAddNodeAndLink={handleAddNodeAndLink} />
             ) : (
               <div className="text-center text-slate-500">
                 <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
