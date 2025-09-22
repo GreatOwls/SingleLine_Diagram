@@ -7,9 +7,15 @@ export enum NodeType {
   UNKNOWN = 'UNKNOWN',
 }
 
+export interface ComponentTypeDefinition {
+  type: string;
+  label: string;
+  iconSvg: string;
+}
+
 export interface Node {
   id: string;
-  type: NodeType;
+  type: string; // Changed from NodeType to support custom types
   label: string;
   properties?: {
     size?: string; // e.g., "100A", "50kW"

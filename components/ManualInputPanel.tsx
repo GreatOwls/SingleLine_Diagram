@@ -184,21 +184,24 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
   const TabButton: React.FC<{tab: ActiveTab, label: string}> = ({ tab, label }) => (
     <button
       onClick={() => setActiveTab(tab)}
-      className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+      className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-all ${
         activeTab === tab 
-          ? 'bg-sky-600 text-white' 
-          : 'bg-slate-700/50 hover:bg-slate-600/50 text-slate-300'
+          ? 'bg-sky-600 text-white shadow' 
+          : 'bg-transparent hover:bg-white/10 text-gray-300'
       }`}
     >
       {label}
     </button>
   );
 
+  const inputClasses = "w-full bg-gray-900/50 border border-white/10 rounded-lg p-2.5 text-gray-200 placeholder-gray-500 focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 focus:outline-none transition-all";
+  const selectClasses = inputClasses + " appearance-none bg-no-repeat bg-right";
+
   const renderNodeEditor = () => (
     <div>
       <div>
-        <h3 className="text-lg font-semibold text-slate-200 mb-2">Existing Components</h3>
-        <p className="text-sm text-slate-400 mb-4">Add components by dragging from the palette on the left.</p>
+        <h3 className="text-lg font-semibold text-gray-200 mb-2">Components</h3>
+        <p className="text-sm text-gray-400 mb-4">Add components by dragging from the palette on the left.</p>
         <div className="mb-2">
             <label htmlFor="node-search" className="sr-only">Search Components</label>
             <input
@@ -208,20 +211,20 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
                 value={nodeSearchTerm}
                 onChange={e => setNodeSearchTerm(e.target.value)}
                 placeholder="Search by ID or Label..."
-                className="w-full bg-slate-800 border border-slate-600 rounded-md p-2 text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                className={inputClasses}
             />
         </div>
-        <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
-            {data.nodes.length === 0 && <p className="text-slate-500 text-sm">No components added yet.</p>}
-            {data.nodes.length > 0 && filteredNodes.length === 0 && <p className="text-slate-500 text-sm">No components match your search.</p>}
+        <div className="max-h-96 overflow-y-auto space-y-2 pr-1 -mr-2">
+            {data.nodes.length === 0 && <p className="text-gray-500 text-sm p-4 text-center">No components added yet.</p>}
+            {data.nodes.length > 0 && filteredNodes.length === 0 && <p className="text-gray-500 text-sm p-4 text-center">No components match your search.</p>}
             {filteredNodes.map(node => (
-                <div key={node.id} className="flex items-center justify-between bg-slate-700/50 p-2 rounded-md">
+                <div key={node.id} className="flex items-center justify-between bg-black/20 p-3 rounded-lg">
                     <div>
-                        <p className="font-bold text-slate-300">{node.id} <span className="text-xs font-normal text-slate-400">({node.type})</span></p>
-                        <p className="text-sm text-slate-400">{node.label}</p>
-                         {node.properties?.size && <p className="text-xs text-slate-500 italic">{node.properties.size}</p>}
+                        <p className="font-semibold text-gray-300">{node.id} <span className="text-xs font-normal text-gray-400">({node.type})</span></p>
+                        <p className="text-sm text-gray-400">{node.label}</p>
+                         {node.properties?.size && <p className="text-xs text-gray-500">{node.properties.size}</p>}
                     </div>
-                    <button onClick={() => onRemoveNode(node.id)} className="text-red-400 hover:text-red-300 p-1 rounded-full text-lg font-bold leading-none">&times;</button>
+                    <button onClick={() => onRemoveNode(node.id)} className="text-red-500 hover:text-red-400 p-1 rounded-full text-2xl font-bold leading-none transition-colors">&times;</button>
                 </div>
             ))}
         </div>
@@ -232,42 +235,42 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
   const renderLinkEditor = () => (
     <div>
         <form onSubmit={handleAddLink} className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-200">Add New Connection</h3>
+            <h3 className="text-lg font-semibold text-gray-200">Add New Connection</h3>
              <div>
-                <label htmlFor="link-source" className="block text-sm font-medium text-slate-400 mb-1">From</label>
-                <select ref={linkSourceSelectRef} id="link-source" value={linkSource} onChange={e => setLinkSource(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                <label htmlFor="link-source" className="block text-sm font-medium text-gray-400 mb-1.5">From</label>
+                <select ref={linkSourceSelectRef} id="link-source" value={linkSource} onChange={e => setLinkSource(e.target.value)} className={selectClasses} style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`}}>
                     <option value="" disabled>Select source...</option>
                     {data.nodes.map(n => <option key={n.id} value={n.id}>{connectedNodeIds.has(n.id) ? '🔌 ' : ''}{n.id} - {n.label}</option>)}
                 </select>
             </div>
             <div>
-                <label htmlFor="link-target" className="block text-sm font-medium text-slate-400 mb-1">To</label>
-                <select id="link-target" value={linkTarget} onChange={e => setLinkTarget(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                <label htmlFor="link-target" className="block text-sm font-medium text-gray-400 mb-1.5">To</label>
+                <select id="link-target" value={linkTarget} onChange={e => setLinkTarget(e.target.value)} className={selectClasses} style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`}}>
                      <option value="" disabled>Select target...</option>
                     {data.nodes.map(n => <option key={n.id} value={n.id}>{connectedNodeIds.has(n.id) ? '🔌 ' : ''}{n.id} - {n.label}</option>)}
                 </select>
             </div>
              <div>
-                <label htmlFor="link-diameter" className="block text-sm font-medium text-slate-400 mb-1">Wire Diameter</label>
-                <input id="link-diameter" type="text" value={linkDiameter} list="wire-sizes-list" onChange={e => setLinkDiameter(e.target.value)} placeholder="e.g., 50 sq. mm." className="w-full bg-slate-800 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+                <label htmlFor="link-diameter" className="block text-sm font-medium text-gray-400 mb-1.5">Wire Size</label>
+                <input id="link-diameter" type="text" value={linkDiameter} list="wire-sizes-list" onChange={e => setLinkDiameter(e.target.value)} placeholder="e.g., 50 sq. mm." className={inputClasses} />
                 <datalist id="wire-sizes-list">
                     {commonWireSizes.map(size => <option key={size} value={size} />)}
                 </datalist>
             </div>
              {linkError && <p className="text-red-400 text-sm">{linkError}</p>}
-            <button type="submit" className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-4 rounded-md transition" disabled={data.nodes.length < 2}>Add Connection</button>
+            <button type="submit" className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-md shadow-sky-600/20" disabled={data.nodes.length < 2}>Add Connection</button>
         </form>
          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-slate-200 mb-2">Existing Connections</h3>
-            <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                {data.links.length === 0 && <p className="text-slate-500 text-sm">No connections added yet.</p>}
+            <h3 className="text-lg font-semibold text-gray-200 mb-2">Existing Connections</h3>
+            <div className="max-h-60 overflow-y-auto space-y-2 pr-1 -mr-2">
+                {data.links.length === 0 && <p className="text-gray-500 text-sm p-4 text-center">No connections added yet.</p>}
                 {data.links.map((link, i) => (
-                    <div key={`${link.source}-${link.target}-${i}`} className="flex items-center justify-between bg-slate-700/50 p-2 rounded-md">
+                    <div key={`${link.source}-${link.target}-${i}`} className="flex items-center justify-between bg-black/20 p-3 rounded-lg">
                         <div>
-                           <p className="font-mono text-sm text-slate-300">{link.source} &rarr; {link.target}</p>
-                           {link.properties?.diameter && <p className="text-xs text-slate-500 italic">{link.properties.diameter}</p>}
+                           <p className="font-mono text-sm text-gray-300">{link.source} &rarr; {link.target}</p>
+                           {link.properties?.diameter && <p className="text-xs text-gray-500">{link.properties.diameter}</p>}
                         </div>
-                        <button onClick={() => onRemoveLink(link.source as string, link.target as string)} className="text-red-400 hover:text-red-300 p-1 rounded-full text-lg font-bold leading-none">&times;</button>
+                        <button onClick={() => onRemoveLink(link.source as string, link.target as string)} className="text-red-500 hover:text-red-400 p-1 rounded-full text-2xl font-bold leading-none transition-colors">&times;</button>
                     </div>
                 ))}
             </div>
@@ -278,21 +281,21 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
   const renderGroupEditor = () => (
     <div>
         <form onSubmit={handleAddGroupSubmit} className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-200">Add New Group</h3>
+            <h3 className="text-lg font-semibold text-gray-200">Add New Group</h3>
             <div>
-                <label htmlFor="group-id" className="block text-sm font-medium text-slate-400 mb-1">Group ID</label>
-                <input ref={groupIdInputRef} id="group-id" type="text" value={groupId} onChange={e => setGroupId(e.target.value)} placeholder="e.g., SubstationA" className="w-full bg-slate-800 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+                <label htmlFor="group-id" className="block text-sm font-medium text-gray-400 mb-1.5">Group ID</label>
+                <input ref={groupIdInputRef} id="group-id" type="text" value={groupId} onChange={e => setGroupId(e.target.value)} placeholder="e.g., SubstationA" className={inputClasses} />
             </div>
              <div>
-                <label htmlFor="group-label" className="block text-sm font-medium text-slate-400 mb-1">Group Label</label>
-                <input id="group-label" type="text" value={groupLabel} onChange={e => setGroupLabel(e.target.value)} placeholder="e.g., Substation A" className="w-full bg-slate-800 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+                <label htmlFor="group-label" className="block text-sm font-medium text-gray-400 mb-1.5">Group Label</label>
+                <input id="group-label" type="text" value={groupLabel} onChange={e => setGroupLabel(e.target.value)} placeholder="e.g., Substation A" className={inputClasses} />
             </div>
              {groupError && <p className="text-red-400 text-sm">{groupError}</p>}
-            <button type="submit" className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-4 rounded-md transition">Add Group</button>
+            <button type="submit" className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-md shadow-sky-600/20">Add Group</button>
         </form>
 
         <div className="mt-6">
-            <h3 className="text-lg font-semibold text-slate-200 mb-2">Existing Groups</h3>
+            <h3 className="text-lg font-semibold text-gray-200 mb-2">Existing Groups</h3>
             <div className="mb-2">
                 <label htmlFor="group-search" className="sr-only">Search Groups</label>
                 <input
@@ -301,45 +304,46 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
                     value={groupSearchTerm}
                     onChange={e => setGroupSearchTerm(e.target.value)}
                     placeholder="Search by ID or Label..."
-                    className="w-full bg-slate-800 border border-slate-600 rounded-md p-2 text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                    className={inputClasses}
                 />
             </div>
-            <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
-                {(!data.groups || data.groups.length === 0) && <p className="text-slate-500 text-sm">No groups created yet.</p>}
-                {data.groups && data.groups.length > 0 && filteredGroups.length === 0 && <p className="text-slate-500 text-sm">No groups match your search.</p>}
+            <div className="max-h-96 overflow-y-auto space-y-3 pr-1 -mr-2">
+                {(!data.groups || data.groups.length === 0) && <p className="text-gray-500 text-sm p-4 text-center">No groups created yet.</p>}
+                {data.groups && data.groups.length > 0 && filteredGroups.length === 0 && <p className="text-gray-500 text-sm p-4 text-center">No groups match your search.</p>}
                 {filteredGroups.map(group => (
-                    <div key={group.id} className="bg-slate-700/50 p-3 rounded-md">
-                         <div className="flex items-center justify-between mb-2">
+                    <div key={group.id} className="bg-black/20 p-3 rounded-lg">
+                         <div className="flex items-center justify-between mb-3">
                             <div>
-                               <p className="font-bold text-slate-300">{group.label} <span className="text-xs font-normal text-slate-400">({group.id})</span></p>
+                               <p className="font-semibold text-gray-300">{group.label} <span className="text-xs font-normal text-gray-400">({group.id})</span></p>
                             </div>
                              <div className="flex items-center gap-2">
-                                <button onClick={() => onFocusGroup(group.id)} className="text-xs bg-sky-800/70 hover:bg-sky-700/70 text-sky-300 px-2 py-1 rounded-md transition">View</button>
-                                <button onClick={() => onRemoveGroup(group.id)} className="text-red-400 hover:text-red-300 p-1 rounded-full text-lg font-bold leading-none">&times;</button>
+                                <button onClick={() => onFocusGroup(group.id)} className="text-xs bg-sky-600/50 hover:bg-sky-600/80 text-sky-200 px-2.5 py-1 rounded-md transition-colors">Focus</button>
+                                <button onClick={() => onRemoveGroup(group.id)} className="text-red-500 hover:text-red-400 p-1 rounded-full text-2xl font-bold leading-none transition-colors">&times;</button>
                             </div>
                         </div>
                         <div className="space-y-2">
                           {group.nodeIds.map(nodeId => {
                             const node = data.nodes.find(n => n.id === nodeId);
                             return (
-                              <div key={nodeId} className="flex items-center justify-between bg-slate-800/50 p-1.5 rounded text-sm">
-                                <span>{node?.label || nodeId}</span>
-                                <button onClick={() => handleRemoveNodeFromGroup(group.id, nodeId)} className="text-red-500/80 hover:text-red-400 text-xs px-1">&times; remove</button>
+                              <div key={nodeId} className="flex items-center justify-between bg-gray-900/50 p-2 rounded text-sm">
+                                <span className="text-gray-300">{node?.label || nodeId}</span>
+                                <button onClick={() => handleRemoveNodeFromGroup(group.id, nodeId)} className="text-red-600 hover:text-red-500 text-lg px-1 font-bold leading-none">&times;</button>
                               </div>
                             )
                           })}
                         </div>
                         {unassignedNodes.length > 0 && (
-                            <div className="flex gap-2 mt-3 pt-3 border-t border-slate-600/50">
+                            <div className="flex gap-2 mt-3 pt-3 border-t border-white/10">
                                 <select 
                                   value={selectedNodeForGroup} 
                                   onChange={e => setSelectedNodeForGroup(e.target.value)} 
-                                  className="flex-grow bg-slate-800 border border-slate-600 rounded-md p-1.5 text-sm text-white focus:ring-1 focus:ring-sky-500 focus:outline-none"
+                                  className={`${selectClasses} flex-grow !p-2 text-sm`}
+                                  style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`}}
                                 >
-                                    <option value="" disabled>Add a component...</option>
+                                    <option value="" disabled>Add component...</option>
                                     {unassignedNodes.map(n => <option key={n.id} value={n.id}>{n.id} - {n.label}</option>)}
                                 </select>
-                                <button onClick={() => handleAddNodeToGroup(group.id, selectedNodeForGroup)} className="bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold py-1 px-3 rounded-md transition">Add</button>
+                                <button onClick={() => handleAddNodeToGroup(group.id, selectedNodeForGroup)} className="bg-sky-600/80 hover:bg-sky-600 text-white text-sm font-bold py-1 px-3 rounded-md transition-colors">Add</button>
                             </div>
                         )}
                     </div>
@@ -350,19 +354,19 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
   );
 
   return (
-    <div className="bg-slate-800/50 rounded-lg border border-slate-700 p-4 h-full shadow-lg relative">
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-white/10 p-5 shadow-lg h-full relative">
         {isEditingDisabled && (
-            <div className="absolute inset-0 bg-slate-800/90 z-20 flex items-center justify-center text-center p-4 rounded-lg">
-                <p className="text-slate-300">Exit group focus view to resume editing.</p>
+            <div className="absolute inset-0 bg-gray-800/90 z-20 flex items-center justify-center text-center p-4 rounded-2xl">
+                <p className="text-gray-300">Exit focus or trace view to resume editing.</p>
             </div>
         )}
         <fieldset disabled={isEditingDisabled}>
-            <div className="flex gap-2 mb-4 bg-slate-900/50 p-1 rounded-lg">
+            <div className="flex gap-1 mb-6 bg-black/20 p-1 rounded-xl">
               <TabButton tab="nodes" label="Components" />
               <TabButton tab="links" label="Connections" />
               <TabButton tab="groups" label="Groups" />
             </div>
-            <div>
+            <div className="h-[calc(100%-52px)] overflow-y-auto -mr-3 pr-3">
               {activeTab === 'nodes' && renderNodeEditor()}
               {activeTab === 'links' && renderLinkEditor()}
               {activeTab === 'groups' && renderGroupEditor()}

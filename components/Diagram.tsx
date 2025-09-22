@@ -1,37 +1,104 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import * as d3 from 'd3';
-import type { DiagramData, Node, Link } from '../types';
-import { NodeType } from '../types';
+import type { DiagramData, Node, Link, ComponentTypeDefinition } from '../types';
 
 interface DiagramProps {
   data: DiagramData;
   pendingLink: { source: string | null; target: string | null };
   viewMode: 'free' | 'fixed';
-  onDropNode: (type: NodeType, x: number, y: number) => void;
+  onDropNode: (type: string, x: number, y: number) => void;
   onAddNodeAndLink: (sourceNodeId: string, newNodeData: {
-    type: NodeType;
+    type: string;
     label: string;
     properties?: { size?: string };
     linkProperties?: { diameter?: string };
   }) => void;
+  onTraceUpstream: (nodeId: string) => void;
+  componentTypes: ComponentTypeDefinition[];
 }
 
-const iconSvgs: Record<NodeType, string> = {
-    [NodeType.GENERATOR]: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2v4"></path><path d="M12 18v4"></path><path d="m4.93 4.93 2.83 2.83"></path><path d="m16.24 16.24 2.83 2.83"></path><path d="m4.93 19.07 2.83-2.83"></path><path d="m16.24 7.76 2.83-2.83"></path></svg>`,
-    [NodeType.TRANSFORMER]: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="4"></circle><circle cx="18" cy="12" r="4"></circle><line x1="6" y1="12" x2="18" y2="12"></line></svg>`,
-    [NodeType.BUS]: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="10" width="20" height="4" rx="1"></rect></svg>`,
-    [NodeType.LOAD]: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V18"></path><path d="M12 18H6L12 2L18 18H12Z"></path></svg>`,
-    [NodeType.BREAKER]: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"></rect><path d="M5 12H2"></path><path d="M19 12h3"></path></svg>`,
-    [NodeType.UNKNOWN]: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
-};
+export interface DiagramHandle {
+  exportToJPG: () => void;
+}
+
+const unknownIconSvg = `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
 
 const commonWireSizes = [
   '1.5 sq. mm.', '2.5 sq. mm.', '4 sq. mm.', '6 sq. mm.', '10 sq. mm.', '16 sq. mm.', '25 sq. mm.', '35 sq. mm.', '50 sq. mm.', '70 sq. mm.', '95 sq. mm.', '120 sq. mm.', '150 sq. mm.', '185 sq. mm.', '240 sq. mm.', '300 sq. mm.'
 ];
 
 
-const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNode, onAddNodeAndLink }) => {
+const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, viewMode, onDropNode, onAddNodeAndLink, onTraceUpstream, componentTypes }, ref) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    exportToJPG: () => {
+      const svgElement = svgRef.current;
+      if (!svgElement) {
+        alert("Cannot export: Diagram element not found.");
+        return;
+      }
+
+      // 1. Get the content's bounding box to crop correctly
+      const contentGroup = svgElement.querySelector('g');
+      if (!contentGroup) {
+          alert("Cannot export: No content found in the diagram.");
+          return;
+      }
+      const bbox = contentGroup.getBBox();
+
+      // 2. Clone the SVG to manipulate it without affecting the live diagram
+      const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
+
+      // 3. Set dimensions on the clone for export
+      const padding = 50;
+      const exportWidth = bbox.width + padding * 2;
+      const exportHeight = bbox.height + padding * 2;
+      
+      const viewBox = `${bbox.x - padding} ${bbox.y - padding} ${exportWidth} ${exportHeight}`;
+
+      svgClone.setAttribute('width', String(exportWidth));
+      svgClone.setAttribute('height', String(exportHeight));
+      svgClone.setAttribute('viewBox', viewBox);
+
+      // 4. Serialize the modified clone
+      const svgString = new XMLSerializer().serializeToString(svgClone);
+      const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+
+      // 5. Create an Image to render the SVG
+      const image = new Image();
+      image.src = svgDataUrl;
+
+      image.onload = () => {
+        // 6. Create a canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = exportWidth;
+        canvas.height = exportHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            alert("Could not create an image canvas for export.");
+            return;
+        }
+        
+        // 7. Draw background color + image
+        const backgroundColor = '#111827'; // gray-900
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0);
+
+        // 8. Trigger download
+        const link = document.createElement('a');
+        link.download = 'single-line-diagram.jpg';
+        link.href = canvas.toDataURL('image/jpeg', 0.95); // High quality
+        link.click();
+      };
+      
+      image.onerror = (err) => {
+        console.error("Failed to convert SVG to Image:", err);
+        alert("Error exporting image. The diagram may contain elements that cannot be rendered for export.");
+      };
+    }
+  }));
 
   useEffect(() => {
     if (!data || !data.nodes || !svgRef.current) {
@@ -44,6 +111,11 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         const svg = d3.select(svgRef.current);
         svg.selectAll("*").remove();
     }
+
+    const iconSvgs = componentTypes.reduce((acc, comp) => {
+        acc[comp.type] = comp.iconSvg;
+        return acc;
+    }, {} as Record<string, string>);
 
     // Create copies to avoid mutating props
     const nodes: (d3.SimulationNodeDatum & Node)[] = data.nodes.map(n => ({ ...n }));
@@ -89,13 +161,13 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
 
     const link = linkGroup.append('path')
         .attr('fill', 'none')
-        .attr('stroke', '#94a3b8') // slate-400
-        .attr('stroke-width', 2.5)
+        .attr('stroke', '#6b7280') // gray-500
+        .attr('stroke-width', 2)
         .attr('stroke-dasharray', d => d.isBoundary ? '5,5' : 'none');
 
     const linkLabel = linkGroup.append('text')
         .text(d => d.properties?.diameter || '')
-        .attr('fill', '#94a3b8') // slate-400
+        .attr('fill', '#9ca3af') // gray-400
         .style('font-size', '10px')
         .attr('text-anchor', 'start')
         .attr('dx', 8)
@@ -103,7 +175,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
 
     // halo for link labels
     linkLabel.clone(true).lower()
-        .attr('stroke', '#020617') // slate-950
+        .attr('stroke', '#111827') // gray-900
         .attr('stroke-width', 3)
         .attr('stroke-linejoin', 'round');
 
@@ -117,17 +189,17 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
     // Node background and border
     node.append('circle')
         .attr('r', iconSize / 2)
-        .attr('fill', d => d.isExternal ? 'transparent' : '#1e293b') // slate-800
+        .attr('fill', d => d.isExternal ? 'transparent' : '#374151') // gray-700
         .attr('stroke', d => {
-            if (d.isExternal) return '#475569'; // slate-600
+            if (d.isExternal) return '#4b5563'; // gray-600
             return (d.id === pendingLink.source || d.id === pendingLink.target) 
             ? '#facc15' // yellow-400 for pending
             : '#38bdf8' // sky-400 for normal
         })
         .attr('stroke-width', d => 
             (d.id === pendingLink.source || d.id === pendingLink.target) 
-            ? 4 
-            : 2.5
+            ? 3 
+            : 2
         )
         .attr('stroke-dasharray', d => d.isExternal ? '4,4' : 'none');
 
@@ -138,9 +210,9 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         .attr('y', -iconSize / 2 + iconPadding / 2)
         .attr('width', iconSize - iconPadding)
         .attr('height', iconSize - iconPadding)
-        .style('color', '#e2e8f0') // slate-200, for 'currentColor' in SVGs
+        .style('color', '#e5e7eb') // gray-200, for 'currentColor' in SVGs
         .style('pointer-events', 'none')
-        .html(d => iconSvgs[d.type] || iconSvgs[NodeType.UNKNOWN]);
+        .html(d => iconSvgs[d.type] || unknownIconSvg);
 
 
     // Node Labels
@@ -148,13 +220,14 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         .text(d => d.label)
         .attr('y', iconSize / 2 + 20)
         .attr('text-anchor', 'middle')
-        .attr('fill', d => d.isExternal ? '#64748b' : '#cbd5e1') // slate-500 for external, slate-300 for normal
+        .attr('fill', d => d.isExternal ? '#6b7280' : '#e5e7eb') // gray-500 for external, gray-200 for normal
         .style('font-size', '12px')
+        .style('font-weight', '500')
         .style('pointer-events', 'none');
 
     // Label halo for readability
     labels.clone(true).lower()
-        .attr('stroke', '#020617') // slate-950
+        .attr('stroke', '#111827') // gray-900
         .attr('stroke-width', 4)
         .attr('stroke-linejoin', 'round');
 
@@ -163,18 +236,17 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         .text(d => d.properties?.size || '')
         .attr('y', iconSize / 2 + 36) // Position below main label
         .attr('text-anchor', 'middle')
-        .attr('fill', '#94a3b8') // slate-400
-        .style('font-size', '11px')
-        .style('font-style', 'italic');
+        .attr('fill', '#9ca3af') // gray-400
+        .style('font-size', '11px');
     
     propertyLabels.clone(true).lower()
-        .attr('stroke', '#020617') // slate-950
+        .attr('stroke', '#111827') // gray-900
         .attr('stroke-width', 3)
         .attr('stroke-linejoin', 'round');
 
     // --- Tooltip Events ---
     node.filter(d => !d.isExternal).on('mouseover', (event, d) => {
-        tooltip.transition().duration(200).style('opacity', 0.95);
+        tooltip.transition().duration(200).style('opacity', 1);
         
         let content = `<strong>ID:</strong> ${d.id}<br/>`;
         content += `<strong>Label:</strong> ${d.label}<br/>`;
@@ -205,12 +277,17 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         tooltip.transition().duration(500).style('opacity', 0);
     });
 
-    // --- Node Click Popover ---
+    // --- Popover and Context Menu Management ---
     function closePopover() {
         container.selectAll('.node-popover').remove();
         d3.select(window).on('mousedown.popover', null);
     }
     
+    function closeContextMenu() {
+        container.selectAll('.node-context-menu').remove();
+        d3.select(window).on('mousedown.contextmenu', null);
+    }
+
     // FIX: Changed type from d3.Selection<HTMLDivElement, ...> to d3.Selection<d3.BaseType, ...>
     // to handle the generic type returned by d3 when appending namespaced 'xhtml:*' elements.
     function renderForm(
@@ -221,33 +298,33 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
 
         const header = popoverContent.append('xhtml:div')
             .style('display', 'flex').style('justify-content', 'space-between')
-            .style('align-items', 'center').style('margin-bottom', '12px');
+            .style('align-items', 'center').style('margin-bottom', '16px');
         
-        header.append('xhtml:span').style('font-weight', '600').text('Add & Connect Component');
+        header.append('xhtml:span').style('font-weight', '600').style('font-size', '16px').text('Add & Connect Component');
 
         header.append('xhtml:button').html('&times;')
-            .style('background', 'none').style('border', 'none').style('color', '#94a3b8')
-            .style('font-size', '20px').style('cursor', 'pointer').style('line-height', '1')
+            .style('background', 'none').style('border', 'none').style('color', '#9ca3af')
+            .style('font-size', '24px').style('cursor', 'pointer').style('line-height', '1')
             .on('click', (event) => { event.stopPropagation(); closePopover(); });
 
         const form = popoverContent.append('xhtml:form')
             .style('display', 'flex').style('flex-direction', 'column')
-            .style('gap', '10px').style('flex-grow', '1');
+            .style('gap', '12px').style('flex-grow', '1');
 
-        const componentTypes = [NodeType.TRANSFORMER, NodeType.BUS, NodeType.LOAD, NodeType.BREAKER];
-        const inputStyles = 'width: 100%; box-sizing: border-box; background-color: #334155; border: 1px solid #475569; border-radius: 6px; padding: 8px; color: #cbd5e1; font-size: 14px;';
-        const labelStyles = 'font-size: 13px; color: #94a3b8; margin-bottom: -4px;';
+        const connectableComponentTypes = componentTypes.filter(c => c.type !== 'GENERATOR');
+        const inputStyles = 'width: 100%; box-sizing: border-box; background-color: #111827; border: 1px solid #4b5563; border-radius: 8px; padding: 10px; color: #d1d5db; font-size: 14px; transition: all 0.2s;';
+        const labelStyles = 'font-size: 13px; color: #9ca3af; margin-bottom: -6px; font-weight: 500;';
 
         // Type Selector
         form.append('xhtml:label').attr('for', 'popover-type').text('Component Type').attr('style', labelStyles);
         const typeSelect = form.append('xhtml:select')
-            .attr('id', 'popover-type').attr('style', inputStyles);
+            .attr('id', 'popover-type').attr('style', inputStyles + ' appearance: none; background-image: url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em;');
         
         typeSelect.selectAll('option')
-            .data(componentTypes)
+            .data(connectableComponentTypes)
             .join('option')
-            .attr('value', d => d)
-            .text(d => d.charAt(0) + d.slice(1).toLowerCase());
+            .attr('value', d => d.type)
+            .text(d => d.label);
         
         // Label Input
         form.append('xhtml:label').attr('for', 'popover-label').text('Label').attr('style', labelStyles);
@@ -255,24 +332,26 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
             .attr('id', 'popover-label').attr('type', 'text')
             .attr('style', inputStyles);
             
-        const generateDefaultLabel = (type: NodeType) => {
+        const generateDefaultLabel = (type: string) => {
+            const componentDef = componentTypes.find(c => c.type === type);
+            const labelBase = componentDef ? componentDef.label : type;
             let count = 1;
-            let defaultLabel = `${type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()} ${count}`;
+            let defaultLabel = `${labelBase} ${count}`;
             while(data.nodes.some(n => n.label === defaultLabel)) {
                 count++;
-                defaultLabel = `${type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()} ${count}`;
+                defaultLabel = `${labelBase} ${count}`;
             }
             return defaultLabel;
         }
 
-        labelInput.attr('value', generateDefaultLabel(componentTypes[0]));
+        labelInput.attr('value', generateDefaultLabel(connectableComponentTypes[0]?.type || ''));
 
         let userHasTyped = false;
         labelInput.on('input', () => { userHasTyped = true; });
         
         typeSelect.on('change', function() {
             if (!userHasTyped) {
-                const selectedType = d3.select(this).property('value') as NodeType;
+                const selectedType = d3.select(this).property('value') as string;
                 labelInput.property('value', generateDefaultLabel(selectedType));
             }
         });
@@ -298,7 +377,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
 
         // Submit Button
         form.append('xhtml:button').attr('type', 'submit').text('Add Component')
-            .attr('style', 'width: 100%; background-color: #0ea5e9; color: white; font-weight: 600; padding: 10px; border-radius: 6px; border: none; cursor: pointer; margin-top: 8px; font-size: 14px; transition: background-color 0.2s;')
+            .attr('style', 'width: 100%; background-color: #0ea5e9; color: white; font-weight: 600; padding: 10px; border-radius: 8px; border: none; cursor: pointer; margin-top: 8px; font-size: 14px; transition: background-color 0.2s;')
             .on('mouseover', function() { d3.select(this).style('background-color', '#0284c7'); })
             .on('mouseout', function() { d3.select(this).style('background-color', '#0ea5e9'); });
         
@@ -306,7 +385,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
             event.preventDefault();
             event.stopPropagation();
             
-            const type = (typeSelect.node() as HTMLSelectElement).value as NodeType;
+            const type = (typeSelect.node() as HTMLSelectElement).value as string;
             const label = (labelInput.node() as HTMLInputElement).value;
             const size = (sizeInput.node() as HTMLInputElement).value;
             const diameter = (diameterInput.node() as HTMLInputElement).value;
@@ -331,13 +410,14 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
 
     function showPopover(event: MouseEvent, d: d3.SimulationNodeDatum & Node) {
         closePopover();
+        closeContextMenu();
 
-        const popoverWidth = 280;
-        const popoverHeight = 380;
+        const popoverWidth = 300;
+        const popoverHeight = 420;
 
         const popover = container.append('foreignObject')
             .attr('class', 'node-popover')
-            .attr('x', d.x! + iconSize / 2 + 10)
+            .attr('x', d.x! + iconSize / 2 + 15)
             .attr('y', d.y! - popoverHeight / 2)
             .attr('width', popoverWidth)
             .attr('height', popoverHeight);
@@ -350,12 +430,15 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
             .style('background', 'transparent').style('height', '100%');
 
         const popoverContent = popoverBody.append('xhtml:div')
-            .style('background-color', '#1e293b').style('border', '1px solid #334155')
-            .style('border-radius', '8px').style('color', '#cbd5e1')
-            .style('font-family', 'sans-serif').style('font-size', '14px')
-            .style('padding', '16px').style('height', '100%')
+            .style('background-color', 'rgba(31, 41, 55, 0.8)') // gray-800 with transparency
+            .style('backdrop-filter', 'blur(8px)')
+            .style('border', '1px solid rgba(255, 255, 255, 0.1)')
+            .style('border-radius', '12px').style('color', '#d1d5db') // gray-300
+            .style('font-family', 'Inter, sans-serif').style('font-size', '14px')
+            .style('padding', '20px').style('height', '100%')
             .style('box-sizing', 'border-box').style('display', 'flex')
-            .style('flex-direction', 'column');
+            .style('flex-direction', 'column')
+            .style('box-shadow', '0 10px 25px rgba(0,0,0,0.3)');
 
         renderForm(d, popoverContent);
 
@@ -372,6 +455,50 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         event.stopPropagation();
         showPopover(event, d);
     });
+    
+    // --- Context Menu (Right-Click) Handler ---
+    node.filter(d => !d.isExternal).on('contextmenu', (event, d) => {
+        event.preventDefault();
+        closePopover();
+        closeContextMenu();
+
+        const [pointerX, pointerY] = d3.pointer(event, container.node() as any);
+
+        const contextMenu = container.append('foreignObject')
+            .attr('class', 'node-context-menu')
+            .attr('x', pointerX + 5)
+            .attr('y', pointerY + 5)
+            .attr('width', 180)
+            .attr('height', 50);
+        
+        contextMenu.on('mousedown', e => e.stopPropagation());
+
+        const body = contextMenu.append('xhtml:body')
+            .style('margin', '0').style('padding', '0').style('background', 'transparent');
+
+        const menuDiv = body.append('xhtml:div')
+            .style('background-color', 'rgba(31, 41, 55, 0.8)') // gray-800 with transparency
+            .style('backdrop-filter', 'blur(8px)')
+            .style('border', '1px solid rgba(255, 255, 255, 0.1)')
+            .style('border-radius', '8px').style('padding', '4px').style('box-shadow', '0 4px 15px rgba(0,0,0,0.3)');
+
+        menuDiv.append('xhtml:button')
+            .text('Trace Upstream Path')
+            .attr('style', 'width: 100%; text-align: left; background: none; border: none; color: #d1d5db; padding: 8px 12px; cursor: pointer; border-radius: 6px; font-size: 14px; font-family: Inter, sans-serif; transition: background-color 0.2s;')
+            .on('mouseover', function() { d3.select(this).style('background-color', 'rgba(255, 255, 255, 0.1)'); })
+            .on('mouseout', function() { d3.select(this).style('background-color', 'transparent'); })
+            .on('click', () => {
+                onTraceUpstream(d.id);
+                closeContextMenu();
+            });
+
+        d3.select(window).on('mousedown.contextmenu', (e: MouseEvent) => {
+            if (!contextMenu.node()?.contains(e.target as globalThis.Node)) {
+                closeContextMenu();
+            }
+        });
+    });
+
 
     // --- Layout and Interactivity ---
     if (viewMode === 'fixed') {
@@ -433,7 +560,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
 
             // 4. If there are multiple disconnected trees, create a virtual root to group them
             if (rootNodes.length > 1) {
-                return { id: '__DUMMY_ROOT__', type: NodeType.UNKNOWN, label: 'root', children: rootNodes };
+                return { id: '__DUMMY_ROOT__', type: 'UNKNOWN', label: 'root', children: rootNodes };
             }
             
             return rootNodes[0];
@@ -533,6 +660,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         .on('zoom', (event) => {
             container.attr('transform', event.transform);
             closePopover();
+            closeContextMenu();
         });
 
     svg.call(zoom)
@@ -546,9 +674,9 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
       .on('drop', (event) => {
         event.preventDefault();
         const droppedData = JSON.parse(event.dataTransfer.getData('application/json'));
-        const type = droppedData.type as NodeType;
+        const type = droppedData.type as string;
 
-        if (type && Object.values(NodeType).includes(type)) {
+        if (type) {
           const currentTransform = d3.zoomTransform(svg.node()!);
           const [mx, my] = d3.pointer(event, svg.node()!);
           // FIX: Correctly destructure the array returned by `currentTransform.invert`. It returns [x, y], not {x, y}.
@@ -627,11 +755,10 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
             .data(data.groups || [], d => d.id)
             .join('path')
             .attr('d', d => groupPathData[d.id] || '')
-            .attr('fill', '#334155')
-            .attr('stroke', '#334155')
+            .attr('fill', 'rgba(255, 255, 255, 0.05)')
+            .attr('stroke', 'rgba(255, 255, 255, 0.05)')
             .attr('stroke-width', 20)
             .attr('stroke-linejoin', 'round')
-            .style('opacity', 0.25)
             .style('pointer-events', 'none');
         
         // Update group labels
@@ -641,7 +768,7 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
             .text(d => d.label)
             .attr('text-anchor', 'middle')
             .attr('font-weight', 'bold')
-            .attr('fill', '#e2e8f0') // slate-200
+            .attr('fill', '#e5e7eb') // gray-200
             .style('font-size', '16px')
             .style('letter-spacing', '0.05em')
             .attr('x', d => {
@@ -682,11 +809,13 @@ const Diagram: React.FC<DiagramProps> = ({ data, pendingLink, viewMode, onDropNo
         }
     });
 
-  }, [data, pendingLink, viewMode, onDropNode, onAddNodeAndLink]);
+  }, [data, pendingLink, viewMode, componentTypes, onDropNode, onAddNodeAndLink, onTraceUpstream]);
 
   return (
-    <svg ref={svgRef} width="100%" height="100%" className="overflow-hidden"></svg>
+    <svg ref={svgRef} className="w-full h-full bg-transparent select-none"></svg>
   );
-};
+});
+
+Diagram.displayName = 'Diagram';
 
 export default Diagram;
