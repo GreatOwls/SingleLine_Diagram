@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Single-Line Diagram Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+          "d3": "https://esm.sh/d3@7"
+        }
+      }
+    </script>
+    <style>
+      .tooltip {
+        position: absolute;
+        text-align: left;
+        padding: 8px;
+        font-size: 12px;
+        background: #1e293b; /* slate-800 */
+        border: 1px solid #334155; /* slate-700 */
+        border-radius: 6px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+        color: #cbd5e1; /* slate-300 */
+        z-index: 10;
+        white-space: nowrap;
+      }
+      .tooltip strong {
+          color: #7dd3fc; /* sky-300 */
+          font-weight: 600;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-900">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

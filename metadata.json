@@ -1,0 +1,5 @@
+{
+  "name": "Single-Line Diagram Generator",
+  "description": "An AI-powered application that generates electrical single-line diagrams from a text description. Describe your electrical system, and the app will visualize it for you.",
+  "requestFramePermissions": []
+}
