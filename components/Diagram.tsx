@@ -6,6 +6,7 @@ interface DiagramProps {
   data: DiagramData;
   pendingLink: { source: string | null; target: string | null };
   viewMode: 'free' | 'fixed';
+  appMode: 'view' | 'edit';
   onDropNode: (type: string, x: number, y: number) => void;
   onAddNodeAndLink: (sourceNodeId: string, newNodeData: {
     type: string;
@@ -28,7 +29,7 @@ const commonWireSizes = [
 ];
 
 
-const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, viewMode, onDropNode, onAddNodeAndLink, onTraceUpstream, componentTypes }, ref) => {
+const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, viewMode, appMode, onDropNode, onAddNodeAndLink, onTraceUpstream, componentTypes }, ref) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useImperativeHandle(ref, () => ({
@@ -39,7 +40,7 @@ const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, vi
         return;
       }
 
-      // 1. Get the content's bounding box to crop correctly
+      // 1. Get the content's bounding box from the original SVG to get correct dimensions
       const contentGroup = svgElement.querySelector('g');
       if (!contentGroup) {
           alert("Cannot export: No content found in the diagram.");
@@ -47,10 +48,22 @@ const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, vi
       }
       const bbox = contentGroup.getBBox();
 
+      // Add a check for an empty or invalid bounding box
+      if (bbox.width === 0 && bbox.height === 0) {
+          alert("Cannot export: Diagram content is not visible or has no dimensions.");
+          return;
+      }
+
       // 2. Clone the SVG to manipulate it without affecting the live diagram
       const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
+      
+      // 3. Remove the zoom/pan transform from the main group in the clone.
+      // This is the key step to ensure the viewBox is the only thing framing the content,
+      // effectively centering the entire diagram regardless of the current on-screen view.
+      const groupInClone = svgClone.querySelector('g');
+      groupInClone?.removeAttribute('transform');
 
-      // 3. Set dimensions on the clone for export
+      // 4. Set dimensions and viewBox on the clone for export
       const padding = 50;
       const exportWidth = bbox.width + padding * 2;
       const exportHeight = bbox.height + padding * 2;
@@ -61,16 +74,16 @@ const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, vi
       svgClone.setAttribute('height', String(exportHeight));
       svgClone.setAttribute('viewBox', viewBox);
 
-      // 4. Serialize the modified clone
+      // 5. Serialize the modified clone
       const svgString = new XMLSerializer().serializeToString(svgClone);
       const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
 
-      // 5. Create an Image to render the SVG
+      // 6. Create an Image to render the SVG
       const image = new Image();
       image.src = svgDataUrl;
 
       image.onload = () => {
-        // 6. Create a canvas
+        // 7. Create a canvas
         const canvas = document.createElement('canvas');
         canvas.width = exportWidth;
         canvas.height = exportHeight;
@@ -80,13 +93,13 @@ const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, vi
             return;
         }
         
-        // 7. Draw background color + image
+        // 8. Draw background color + image
         const backgroundColor = '#111827'; // gray-900
         ctx.fillStyle = backgroundColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(image, 0, 0);
 
-        // 8. Trigger download
+        // 9. Trigger download
         const link = document.createElement('a');
         link.download = 'single-line-diagram.jpg';
         link.href = canvas.toDataURL('image/jpeg', 0.95); // High quality
@@ -449,13 +462,6 @@ const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, vi
         });
     }
 
-    // --- Click handler for nodes ---
-    node.filter(d => !d.isExternal).on('click', (event, d) => {
-        if (event.defaultPrevented) return; // ignore during drag
-        event.stopPropagation();
-        showPopover(event, d);
-    });
-    
     // --- Context Menu (Right-Click) Handler ---
     node.filter(d => !d.isExternal).on('contextmenu', (event, d) => {
         event.preventDefault();
@@ -498,6 +504,15 @@ const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, vi
             }
         });
     });
+
+    if (appMode === 'edit') {
+        // --- Click handler for nodes (for adding new connected nodes) ---
+        node.filter(d => !d.isExternal).on('click', (event, d) => {
+            if (event.defaultPrevented) return; // ignore during drag
+            event.stopPropagation();
+            showPopover(event, d);
+        });
+    }
 
 
     // --- Layout and Interactivity ---
@@ -625,8 +640,13 @@ const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, vi
             .force("collide", d3.forceCollide(iconSize * 1.2))
             .alpha(1).restart();
         
-        node.attr('cursor', d => d.isExternal ? 'default' : 'grab');
+        node.attr('cursor', d => {
+            if (d.isExternal) return 'default';
+            return 'grab';
+        });
 
+        // In free view, nodes can be dragged for temporary rearrangement in both view and edit modes.
+        // Note: In the current implementation, dragged positions are not persisted in the state.
         function dragstarted(event: d3.D3DragEvent<SVGGElement, d3.SimulationNodeDatum & Node, any>, d: d3.SimulationNodeDatum & Node) {
           if (!event.active) simulation.alphaTarget(0.3).restart();
           d.fx = d.x;
@@ -672,6 +692,7 @@ const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, vi
         event.preventDefault(); // This is necessary to allow a drop
       })
       .on('drop', (event) => {
+        if (appMode === 'view') return;
         event.preventDefault();
         const droppedData = JSON.parse(event.dataTransfer.getData('application/json'));
         const type = droppedData.type as string;
@@ -809,7 +830,7 @@ const Diagram = forwardRef<DiagramHandle, DiagramProps>(({ data, pendingLink, vi
         }
     });
 
-  }, [data, pendingLink, viewMode, componentTypes, onDropNode, onAddNodeAndLink, onTraceUpstream]);
+  }, [data, pendingLink, viewMode, appMode, componentTypes, onDropNode, onAddNodeAndLink, onTraceUpstream]);
 
   return (
     <svg ref={svgRef} className="w-full h-full bg-transparent select-none"></svg>

@@ -194,7 +194,7 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
     </button>
   );
 
-  const inputClasses = "w-full bg-gray-900/50 border border-white/10 rounded-lg p-2.5 text-gray-200 placeholder-gray-500 focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 focus:outline-none transition-all";
+  const inputClasses = "w-full bg-gray-900/50 border border-white/10 rounded-lg p-2.5 text-gray-200 placeholder-gray-500 focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 focus:outline-none transition-all disabled:bg-gray-800/60 disabled:text-gray-500 disabled:cursor-not-allowed";
   const selectClasses = inputClasses + " appearance-none bg-no-repeat bg-right";
 
   const renderNodeEditor = () => (
@@ -224,7 +224,7 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
                         <p className="text-sm text-gray-400">{node.label}</p>
                          {node.properties?.size && <p className="text-xs text-gray-500">{node.properties.size}</p>}
                     </div>
-                    <button onClick={() => onRemoveNode(node.id)} className="text-red-500 hover:text-red-400 p-1 rounded-full text-2xl font-bold leading-none transition-colors">&times;</button>
+                    <button onClick={() => onRemoveNode(node.id)} disabled={isEditingDisabled} className="text-red-500 hover:text-red-400 p-1 rounded-full text-2xl font-bold leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed">&times;</button>
                 </div>
             ))}
         </div>
@@ -238,27 +238,27 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
             <h3 className="text-lg font-semibold text-gray-200">Add New Connection</h3>
              <div>
                 <label htmlFor="link-source" className="block text-sm font-medium text-gray-400 mb-1.5">From</label>
-                <select ref={linkSourceSelectRef} id="link-source" value={linkSource} onChange={e => setLinkSource(e.target.value)} className={selectClasses} style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`}}>
+                <select ref={linkSourceSelectRef} id="link-source" value={linkSource} onChange={e => setLinkSource(e.target.value)} className={selectClasses} disabled={isEditingDisabled} style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`}}>
                     <option value="" disabled>Select source...</option>
                     {data.nodes.map(n => <option key={n.id} value={n.id}>{connectedNodeIds.has(n.id) ? '🔌 ' : ''}{n.id} - {n.label}</option>)}
                 </select>
             </div>
             <div>
                 <label htmlFor="link-target" className="block text-sm font-medium text-gray-400 mb-1.5">To</label>
-                <select id="link-target" value={linkTarget} onChange={e => setLinkTarget(e.target.value)} className={selectClasses} style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`}}>
+                <select id="link-target" value={linkTarget} onChange={e => setLinkTarget(e.target.value)} className={selectClasses} disabled={isEditingDisabled} style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`}}>
                      <option value="" disabled>Select target...</option>
                     {data.nodes.map(n => <option key={n.id} value={n.id}>{connectedNodeIds.has(n.id) ? '🔌 ' : ''}{n.id} - {n.label}</option>)}
                 </select>
             </div>
              <div>
                 <label htmlFor="link-diameter" className="block text-sm font-medium text-gray-400 mb-1.5">Wire Size</label>
-                <input id="link-diameter" type="text" value={linkDiameter} list="wire-sizes-list" onChange={e => setLinkDiameter(e.target.value)} placeholder="e.g., 50 sq. mm." className={inputClasses} />
+                <input id="link-diameter" type="text" value={linkDiameter} list="wire-sizes-list" onChange={e => setLinkDiameter(e.target.value)} placeholder="e.g., 50 sq. mm." className={inputClasses} disabled={isEditingDisabled} />
                 <datalist id="wire-sizes-list">
                     {commonWireSizes.map(size => <option key={size} value={size} />)}
                 </datalist>
             </div>
              {linkError && <p className="text-red-400 text-sm">{linkError}</p>}
-            <button type="submit" className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-md shadow-sky-600/20" disabled={data.nodes.length < 2}>Add Connection</button>
+            <button type="submit" className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-md shadow-sky-600/20 disabled:opacity-40 disabled:cursor-not-allowed" disabled={isEditingDisabled || data.nodes.length < 2}>Add Connection</button>
         </form>
          <div className="mt-6">
             <h3 className="text-lg font-semibold text-gray-200 mb-2">Existing Connections</h3>
@@ -270,7 +270,7 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
                            <p className="font-mono text-sm text-gray-300">{link.source} &rarr; {link.target}</p>
                            {link.properties?.diameter && <p className="text-xs text-gray-500">{link.properties.diameter}</p>}
                         </div>
-                        <button onClick={() => onRemoveLink(link.source as string, link.target as string)} className="text-red-500 hover:text-red-400 p-1 rounded-full text-2xl font-bold leading-none transition-colors">&times;</button>
+                        <button onClick={() => onRemoveLink(link.source as string, link.target as string)} disabled={isEditingDisabled} className="text-red-500 hover:text-red-400 p-1 rounded-full text-2xl font-bold leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed">&times;</button>
                     </div>
                 ))}
             </div>
@@ -284,14 +284,14 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
             <h3 className="text-lg font-semibold text-gray-200">Add New Group</h3>
             <div>
                 <label htmlFor="group-id" className="block text-sm font-medium text-gray-400 mb-1.5">Group ID</label>
-                <input ref={groupIdInputRef} id="group-id" type="text" value={groupId} onChange={e => setGroupId(e.target.value)} placeholder="e.g., SubstationA" className={inputClasses} />
+                <input ref={groupIdInputRef} id="group-id" type="text" value={groupId} onChange={e => setGroupId(e.target.value)} placeholder="e.g., SubstationA" className={inputClasses} disabled={isEditingDisabled} />
             </div>
              <div>
                 <label htmlFor="group-label" className="block text-sm font-medium text-gray-400 mb-1.5">Group Label</label>
-                <input id="group-label" type="text" value={groupLabel} onChange={e => setGroupLabel(e.target.value)} placeholder="e.g., Substation A" className={inputClasses} />
+                <input id="group-label" type="text" value={groupLabel} onChange={e => setGroupLabel(e.target.value)} placeholder="e.g., Substation A" className={inputClasses} disabled={isEditingDisabled} />
             </div>
              {groupError && <p className="text-red-400 text-sm">{groupError}</p>}
-            <button type="submit" className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-md shadow-sky-600/20">Add Group</button>
+            <button type="submit" className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-md shadow-sky-600/20 disabled:opacity-40 disabled:cursor-not-allowed" disabled={isEditingDisabled}>Add Group</button>
         </form>
 
         <div className="mt-6">
@@ -318,7 +318,7 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
                             </div>
                              <div className="flex items-center gap-2">
                                 <button onClick={() => onFocusGroup(group.id)} className="text-xs bg-sky-600/50 hover:bg-sky-600/80 text-sky-200 px-2.5 py-1 rounded-md transition-colors">Focus</button>
-                                <button onClick={() => onRemoveGroup(group.id)} className="text-red-500 hover:text-red-400 p-1 rounded-full text-2xl font-bold leading-none transition-colors">&times;</button>
+                                <button onClick={() => onRemoveGroup(group.id)} disabled={isEditingDisabled} className="text-red-500 hover:text-red-400 p-1 rounded-full text-2xl font-bold leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed">&times;</button>
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -327,7 +327,7 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
                             return (
                               <div key={nodeId} className="flex items-center justify-between bg-gray-900/50 p-2 rounded text-sm">
                                 <span className="text-gray-300">{node?.label || nodeId}</span>
-                                <button onClick={() => handleRemoveNodeFromGroup(group.id, nodeId)} className="text-red-600 hover:text-red-500 text-lg px-1 font-bold leading-none">&times;</button>
+                                <button onClick={() => handleRemoveNodeFromGroup(group.id, nodeId)} disabled={isEditingDisabled} className="text-red-600 hover:text-red-500 text-lg px-1 font-bold leading-none disabled:opacity-40 disabled:cursor-not-allowed">&times;</button>
                               </div>
                             )
                           })}
@@ -338,12 +338,13 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
                                   value={selectedNodeForGroup} 
                                   onChange={e => setSelectedNodeForGroup(e.target.value)} 
                                   className={`${selectClasses} flex-grow !p-2 text-sm`}
+                                  disabled={isEditingDisabled}
                                   style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`}}
                                 >
                                     <option value="" disabled>Add component...</option>
                                     {unassignedNodes.map(n => <option key={n.id} value={n.id}>{n.id} - {n.label}</option>)}
                                 </select>
-                                <button onClick={() => handleAddNodeToGroup(group.id, selectedNodeForGroup)} className="bg-sky-600/80 hover:bg-sky-600 text-white text-sm font-bold py-1 px-3 rounded-md transition-colors">Add</button>
+                                <button onClick={() => handleAddNodeToGroup(group.id, selectedNodeForGroup)} className="bg-sky-600/80 hover:bg-sky-600 text-white text-sm font-bold py-1 px-3 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled={isEditingDisabled}>Add</button>
                             </div>
                         )}
                     </div>
@@ -354,24 +355,22 @@ const ManualInputPanel: React.FC<ManualInputPanelProps> = ({
   );
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-white/10 p-5 shadow-lg h-full relative">
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-white/10 p-5 shadow-lg h-full flex flex-col">
         {isEditingDisabled && (
-            <div className="absolute inset-0 bg-gray-800/90 z-20 flex items-center justify-center text-center p-4 rounded-2xl">
-                <p className="text-gray-300">Exit focus or trace view to resume editing.</p>
+            <div className="bg-yellow-900/30 border border-yellow-500/30 text-yellow-300 text-xs p-3 rounded-lg mb-4">
+                Editing is disabled. Switch to Edit Mode or exit Focus/Trace view to make changes.
             </div>
         )}
-        <fieldset disabled={isEditingDisabled}>
-            <div className="flex gap-1 mb-6 bg-black/20 p-1 rounded-xl">
-              <TabButton tab="nodes" label="Components" />
-              <TabButton tab="links" label="Connections" />
-              <TabButton tab="groups" label="Groups" />
-            </div>
-            <div className="h-[calc(100%-52px)] overflow-y-auto -mr-3 pr-3">
-              {activeTab === 'nodes' && renderNodeEditor()}
-              {activeTab === 'links' && renderLinkEditor()}
-              {activeTab === 'groups' && renderGroupEditor()}
-            </div>
-        </fieldset>
+        <div className="flex gap-1 mb-4 bg-black/20 p-1 rounded-xl">
+          <TabButton tab="nodes" label="Components" />
+          <TabButton tab="links" label="Connections" />
+          <TabButton tab="groups" label="Groups" />
+        </div>
+        <div className="flex-grow overflow-y-auto -mr-3 pr-3">
+          {activeTab === 'nodes' && renderNodeEditor()}
+          {activeTab === 'links' && renderLinkEditor()}
+          {activeTab === 'groups' && renderGroupEditor()}
+        </div>
     </div>
   );
 };

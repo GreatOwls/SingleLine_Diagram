@@ -4,9 +4,10 @@ import type { ComponentTypeDefinition } from '../types';
 interface PaletteItemProps {
   component: ComponentTypeDefinition;
   onEdit: () => void;
+  appMode: 'view' | 'edit';
 }
 
-const PaletteItem: React.FC<PaletteItemProps> = ({ component, onEdit }) => {
+const PaletteItem: React.FC<PaletteItemProps> = ({ component, onEdit, appMode }) => {
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
         e.dataTransfer.setData('application/json', JSON.stringify({ type: component.type }));
         e.dataTransfer.effectAllowed = 'copy';
@@ -14,21 +15,23 @@ const PaletteItem: React.FC<PaletteItemProps> = ({ component, onEdit }) => {
 
     return (
         <div
-            draggable
+            draggable={appMode === 'edit'}
             onDragStart={handleDragStart}
-            className="group relative flex flex-col items-center p-2 bg-gray-700/50 rounded-xl border border-transparent cursor-grab active:cursor-grabbing hover:bg-gray-700/80 hover:border-sky-500 transition-all transform hover:scale-105"
+            className={`group relative flex flex-col items-center p-2 bg-gray-700/50 rounded-xl border border-transparent transition-all transform ${appMode === 'edit' ? 'cursor-grab active:cursor-grabbing hover:bg-gray-700/80 hover:border-sky-500 hover:scale-105' : 'cursor-default'}`}
         >
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit();
-                }}
-                className="absolute top-1 right-1 p-1 rounded-full bg-gray-900/50 text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-sky-600 hover:text-white transition-all z-10"
-                aria-label={`Edit ${component.label}`}
-                title={`Edit ${component.label}`}
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
-            </button>
+            {appMode === 'edit' && (
+              <button
+                  onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit();
+                  }}
+                  className="absolute top-1 right-1 p-1 rounded-full bg-gray-900/50 text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-sky-600 hover:text-white transition-all z-10"
+                  aria-label={`Edit ${component.label}`}
+                  title={`Edit ${component.label}`}
+              >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
+              </button>
+            )}
             <div className="w-8 h-8 text-gray-300" dangerouslySetInnerHTML={{ __html: component.iconSvg }} />
             <span className="text-xs text-gray-400 mt-2 text-center">{component.label}</span>
         </div>
@@ -124,9 +127,10 @@ interface ComponentPaletteProps {
     componentTypes: ComponentTypeDefinition[];
     onAddComponentType: (component: ComponentTypeDefinition) => void;
     onEditComponentType: (component: ComponentTypeDefinition) => void;
+    appMode: 'view' | 'edit';
 }
 
-const ComponentPalette: React.FC<ComponentPaletteProps> = ({ onHide, componentTypes, onAddComponentType, onEditComponentType }) => {
+const ComponentPalette: React.FC<ComponentPaletteProps> = ({ onHide, componentTypes, onAddComponentType, onEditComponentType, appMode }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingComponent, setEditingComponent] = useState<ComponentTypeDefinition | null>(null);
 
@@ -162,12 +166,13 @@ const ComponentPalette: React.FC<ComponentPaletteProps> = ({ onHide, componentTy
         </div>
         <div className="grid grid-cols-2 gap-3 flex-grow">
           {componentTypes.map((component) => (
-            <PaletteItem key={component.type} component={component} onEdit={() => handleEdit(component)} />
+            <PaletteItem key={component.type} component={component} onEdit={() => handleEdit(component)} appMode={appMode} />
           ))}
         </div>
         <button 
           onClick={handleAddNew}
-          className="w-full mt-4 text-center bg-sky-600/20 hover:bg-sky-600/40 text-sky-300 py-2.5 rounded-lg text-sm font-semibold transition-colors border border-sky-500/30"
+          disabled={appMode === 'view'}
+          className="w-full mt-4 text-center bg-sky-600/20 hover:enabled:bg-sky-600/40 text-sky-300 py-2.5 rounded-lg text-sm font-semibold transition-colors border border-sky-500/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-sky-600/20"
         >
           + Add New
         </button>

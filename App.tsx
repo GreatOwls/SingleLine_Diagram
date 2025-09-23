@@ -5,13 +5,43 @@ import Header from './components/Header';
 import ManualInputPanel from './components/ManualInputPanel';
 import Diagram, { type DiagramHandle } from './components/Diagram';
 import ComponentPalette from './components/ComponentPalette';
+import PasswordModal from './components/PasswordModal';
 
 const initialComponentTypes: ComponentTypeDefinition[] = [
-  { type: NodeType.GENERATOR, label: 'Generator', iconSvg: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2v4"></path><path d="M12 18v4"></path><path d="m4.93 4.93 2.83 2.83"></path><path d="m16.24 16.24 2.83 2.83"></path><path d="m4.93 19.07 2.83-2.83"></path><path d="m16.24 7.76 2.83-2.83"></path></svg>` },
-  { type: NodeType.TRANSFORMER, label: 'Transformer', iconSvg: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="4"></circle><circle cx="18" cy="12" r="4"></circle><line x1="6" y1="12" x2="18" y2="12"></line></svg>` },
+  { type: NodeType.GENERATOR, label: 'Generator', iconSvg: `<svg version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="25px" height="25px" viewBox="0 0 554.625 554.625" style="enable-background:new 0 0 554.625 554.625;"
+	 xml:space="preserve">
+<g>
+	<polygon points="293.772,554.625 280.222,258.188 265.486,258.188 253.925,554.625 	" fill="currentColor"/>
+	<path fill="currentColor" d="M282.383,172.125c7.114,0,12.89-7.564,12.89-14.678L282.67,15.577C282.67,8.463,282.623,0,275.508,0h-1.722
+		c-7.114,0-7.736,8.463-7.736,15.577l-12.029,141.87c0,7.114,5.766,14.678,12.891,14.678H282.383z"/>
+	<path fill="currentColor" d="M434.924,322.008c5.995,3.834,13.148,8.348,16.982,2.353l0.928-1.444c3.835-5.996-2.964-11.073-8.97-14.898
+		l-113.096-86.493c-5.995-3.834-15.481-3.041-19.307,2.964l-8.319,13.034c-3.834,5.996-0.564,14.927,5.441,18.762L434.924,322.008z"
+		/>
+	<path fill="currentColor" d="M119.697,322.008l126.349-65.742c5.996-3.835,9.267-12.766,5.432-18.762l-8.319-13.034
+		c-3.834-5.996-13.311-6.79-19.306-2.964l-113.096,86.502c-5.996,3.835-12.795,8.903-8.97,14.898l0.928,1.444
+		C106.548,330.355,113.701,325.842,119.697,322.008z"/>
+	<circle fill="currentColor" cx="273.853" cy="212.766" r="19.823"/>
+</g>
+</svg>
+` },
+  { type: NodeType.TRANSFORMER, label: 'Transformer', iconSvg: `<?xml version='1.0' encoding='iso-8859-1'?>
+<!-- License: CC0. Made by SVG Repo: https://www.svgrepo.com/svg/108054/transformer -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 232 232" xmlns:xlink="http://www.w3.org/1999/xlink" enable-background="new 0 0 232 232">
+  <g>
+    <path fill="currentColor" d="m83.329,140.575c0-9.533-3.671-18.651-9.979-25.536 6.307-6.885 9.977-16.002 9.977-25.535 0-9.527-3.67-18.639-9.977-25.522 6.348-6.906 9.96-16.129 9.96-25.547 0-9.986-4.032-19.747-11.068-26.786-7.098-7.086-16.829-11.149-26.701-11.149h-45.541v16h45.541c5.665,0 11.271,2.359 15.386,6.467 3.994,3.994 6.371,9.777 6.371,15.468 0,5.726-2.325,11.321-6.356,15.351-1.264,1.262-2.717,2.368-4.273,3.289l-.069,13.758c6.656,3.964 10.365,10.943 10.365,18.671 0,7.61-3.964,14.763-10.964,18.666v13.738c7,3.904 10.966,11.057 10.966,18.667 0,7.901-4.019,15.188-10.939,19.017l.055,14.008c1.789,0.985 3.441,2.209 4.87,3.641 4.04,4.037 6.367,9.644 6.367,15.381 0,5.754-2.312,11.371-6.346,15.406-4.121,4.113-9.714,6.473-15.355,6.473h-45.619v16h45.618c9.848,0 19.565-4.064 26.669-11.153 7.018-7.019 11.043-16.76 11.043-26.726 0-9.644-3.781-19.081-10.401-26.038 6.577-6.916 10.4-16.189 10.4-26.009z"/>
+    <path fill="currentColor" d="m187.125,16.5h44.875v-16h-44.875c-9.872,0-19.604,4.063-26.708,11.154-7.029,7.033-11.062,16.794-11.062,26.78 0,9.417 3.612,18.64 9.96,25.547-6.307,6.883-9.976,15.995-9.976,25.522 0,9.533 3.67,18.65 9.976,25.535-6.308,6.885-9.979,16.003-9.979,25.536 0,9.82 3.823,19.093 10.4,26.008-6.621,6.96-10.401,16.397-10.401,26.038 0,9.966 4.025,19.707 11.048,26.73 7.099,7.085 16.816,11.148 26.664,11.148h44.953v-16h-44.952c-5.641,0-11.233-2.359-15.349-6.468-4.04-4.04-6.351-9.657-6.351-15.411 0-5.737 2.328-11.344 6.372-15.385 1.426-1.428 3.081-2.651 4.87-3.637l.063-14.008c-6.92-3.829-11.288-11.115-11.288-19.017 0-7.61 3.633-14.763 10.633-18.667v-13.735c-7-3.903-10.631-11.056-10.631-18.666 0-7.728 3.861-14.707 10.516-18.671l.023-13.758c-1.557-0.921-2.964-2.027-4.225-3.287-4.034-4.032-6.337-9.628-6.337-15.354 0-5.691 2.389-11.474 6.376-15.462 4.122-4.113 9.74-6.472 15.405-6.472z"/>
+    <rect fill="currentColor" width="16" x="108" y="0.5" height="231"/>
+  </g>
+</svg>
+` },
   { type: NodeType.BUS, label: 'Bus', iconSvg: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="10" width="20" height="4" rx="1"></rect></svg>` },
-  { type: NodeType.LOAD, label: 'Load', iconSvg: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V18"></path><path d="M12 18H6L12 2L18 18H12Z"></path></svg>` },
-  { type: NodeType.BREAKER, label: 'Breaker', iconSvg: `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"></rect><path d="M5 12H2"></path><path d="M19 12h3"></path></svg>` },
+  { type: NodeType.LOAD, label: 'Load', iconSvg: `<svg fill="currentColor" width="25px" height="25px" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg" id="memory-alpha-l"><path d="M15 1V2H17V3H18V4H19V5H20V7H21V15H20V17H19V18H18V19H17V20H15V21H7V20H5V19H4V18H3V17H2V15H1V7H2V5H3V4H4V3H5V2H7V1H15M14 3H8V4H6V5H5V6H4V8H3V14H4V16H5V17H6V18H8V19H14V18H16V17H17V16H18V14H19V8H18V6H17V5H16V4H14V3M8 6H10V14H14V16H8V6Z" /></svg>` },
+  { type: NodeType.BREAKER, label: 'Breaker', iconSvg: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <circle cx="228" cy="112" r="44" fill="currentColor"/>
+  <circle cx="228" cy="382" r="44" fill="currentColor"/>
+  <path id="arc" fill="currentColor" style="fill:none;stroke:#ffffff;stroke-width:20;stroke-linecap:round;" d="M282,128c70 66,70 174,0 240"/>
+</svg>` },
 ];
 
 
@@ -61,14 +91,29 @@ const App: React.FC = () => {
   
   const { diagramData, componentTypes } = history.present;
   
+  const [appMode, setAppMode] = useState<'view' | 'edit'>('view');
   const [pendingLink, setPendingLink] = useState<{ source: string | null; target: string | null }>({ source: null, target: null });
   const [viewMode, setViewMode] = useState<'free' | 'fixed'>('fixed');
   const [isPaletteVisible, setIsPaletteVisible] = useState(true);
 
   const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
   const [tracedNodeId, setTracedNodeId] = useState<string | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const diagramRef = useRef<DiagramHandle>(null);
+
+  const handleEnterEditMode = useCallback(() => {
+    setIsPasswordModalOpen(true);
+  }, []);
+
+  const handleExitEditMode = useCallback(() => {
+    setAppMode('view');
+  }, []);
+
+  const handlePasswordSuccess = useCallback(() => {
+    setAppMode('edit');
+    setIsPasswordModalOpen(false);
+  }, []);
 
   const recordChange = useCallback((updater: (prevState: AppState) => AppState) => {
     setHistory(currentHistory => {
@@ -451,6 +496,7 @@ const App: React.FC = () => {
     return diagramData;
   }, [diagramData, focusedGroupId, tracedNodeId]);
 
+  const isEditingDisabled = appMode === 'view' || !!focusedGroupId || !!tracedNodeId;
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 font-sans flex flex-col">
@@ -462,6 +508,9 @@ const App: React.FC = () => {
         onRedo={handleRedo}
         canUndo={history.past.length > 0}
         canRedo={history.future.length > 0}
+        appMode={appMode}
+        onEnterEditMode={handleEnterEditMode}
+        onExitEditMode={handleExitEditMode}
       />
       <main className="flex-grow container mx-auto p-4 md:p-6 lg:p-8 flex flex-row gap-6 max-w-screen-2xl">
         {isPaletteVisible ? (
@@ -470,6 +519,7 @@ const App: React.FC = () => {
               componentTypes={componentTypes}
               onAddComponentType={handleAddComponentType}
               onEditComponentType={handleEditComponentType}
+              appMode={appMode}
             />
           ) : (
             <button
@@ -537,6 +587,7 @@ const App: React.FC = () => {
                 data={displayedData} 
                 pendingLink={pendingLink} 
                 viewMode={viewMode} 
+                appMode={appMode}
                 onDropNode={handleDropNode} 
                 onAddNodeAndLink={handleAddNodeAndLink}
                 onTraceUpstream={handleTraceUpstream} 
@@ -564,13 +615,19 @@ const App: React.FC = () => {
               onRemoveGroup={handleRemoveGroup}
               onUpdateGroup={handleUpdateGroup}
               onFocusGroup={handleFocusGroup}
-              isEditingDisabled={!!focusedGroupId || !!tracedNodeId}
+              isEditingDisabled={isEditingDisabled}
            />
         </div>
       </main>
       <footer className="text-center p-4 text-gray-600 text-xs">
         <p>Nuttapon N.</p>
       </footer>
+      {isPasswordModalOpen && (
+        <PasswordModal 
+          onClose={() => setIsPasswordModalOpen(false)}
+          onSuccess={handlePasswordSuccess}
+        />
+      )}
     </div>
   );
 };

@@ -8,9 +8,12 @@ interface HeaderProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  appMode: 'view' | 'edit';
+  onEnterEditMode: () => void;
+  onExitEditMode: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSave, onLoad, onExportJPG, onUndo, onRedo, canUndo, canRedo }) => {
+const Header: React.FC<HeaderProps> = ({ onSave, onLoad, onExportJPG, onUndo, onRedo, canUndo, canRedo, appMode, onEnterEditMode, onExitEditMode }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -22,17 +25,17 @@ const Header: React.FC<HeaderProps> = ({ onSave, onLoad, onExportJPG, onUndo, on
       <div className="absolute top-1/2 -translate-y-1/2 left-6 flex items-center gap-2">
         <button
           onClick={onUndo}
-          disabled={!canUndo}
+          disabled={!canUndo || appMode === 'view'}
           className="p-2 rounded-lg bg-white/5 border border-white/10 hover:enabled:bg-white/10 text-gray-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           title="Undo (Ctrl+Z)"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11 15l-3-3m0 0l3-3m-3 3h8A5 5 0 009 9V5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11 9l-3 3m0 0l3 3m-3-3h8a5 5 0 005-5V7" />
           </svg>
         </button>
         <button
           onClick={onRedo}
-          disabled={!canRedo}
+          disabled={!canRedo || appMode === 'view'}
           className="p-2 rounded-lg bg-white/5 border border-white/10 hover:enabled:bg-white/10 text-gray-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           title="Redo (Ctrl+Y)"
         >
@@ -48,6 +51,21 @@ const Header: React.FC<HeaderProps> = ({ onSave, onLoad, onExportJPG, onUndo, on
         Facility Dept. Seagate Teparuk
       </p>
       <div className="absolute top-1/2 -translate-y-1/2 right-6 flex gap-3">
+        {appMode === 'view' ? (
+            <button 
+              onClick={onEnterEditMode}
+              className="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg transition-all text-sm shadow-md shadow-green-600/20"
+            >
+              Enter Edit Mode
+            </button>
+        ) : (
+            <button 
+              onClick={onExitEditMode}
+              className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-all text-sm shadow-md shadow-yellow-500/20"
+            >
+              Exit Edit Mode
+            </button>
+        )}
         <button 
           onClick={onExportJPG}
           className="bg-white/5 border border-white/10 hover:bg-white/10 text-gray-200 font-semibold py-2 px-4 rounded-lg transition-all text-sm shadow"
@@ -56,7 +74,8 @@ const Header: React.FC<HeaderProps> = ({ onSave, onLoad, onExportJPG, onUndo, on
         </button>
         <button 
           onClick={onSave}
-          className="bg-white/5 border border-white/10 hover:bg-white/10 text-gray-200 font-semibold py-2 px-4 rounded-lg transition-all text-sm shadow"
+          disabled={appMode === 'view'}
+          className="bg-white/5 border border-white/10 hover:enabled:bg-white/10 text-gray-200 font-semibold py-2 px-4 rounded-lg transition-all text-sm shadow disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Save
         </button>
